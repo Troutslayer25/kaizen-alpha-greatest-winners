@@ -3,7 +3,7 @@
 ### Phase-Gate Audit Framework
 **Author:** Scott Oman · Kaizen Alpha Research
 **Date:** June 2026
-**Version:** 6.0 — Reconciles the auditor framework with the V10 study design (`KA_GREATEST_WINNERS_STUDY_V10.md`). Fixes a direct contradiction (the walk-forward "non-overlapping windows" rule, which would wrongly HALT V10's expanding purged/embargoed scheme). Adds coverage for design elements introduced after V5: the two-dataset model (matched controls for discovery vs. universe-sampled forward-labeled points for the production classifier), the `(ticker_id, as_of_date)`-keyed feature store, `setup_labels` and `matched_controls` leakage, probability calibration, the findings-hierarchy tolerance pre-commitment, and a mandatory prior-code provenance review (bias control on reused KA code). See Appendix B for the full change log.
+**Version:** 7.0 — Builds on V6.0. Adds **feature-selection contamination** control: the no-framework-consultation rule is necessary but not sufficient, because the candidate feature *list* can implicitly be a practitioner's list even with no explicit framework reference. Every feature now carries a pre-committed `motivation` tag (theory / practitioner / generic / auto), Auditor 4 cross-tabs Tier-1 findings by motivation at Gate A3→A4, and the design commits to a generic/auto feature bank so practitioner-recognizable features compete against framework-neutral descriptors. See Appendix C for the full change log; V6.0 reconciliation retained (Appendix B).
 
 ---
 
@@ -16,6 +16,7 @@
 | 4.0 | Full rewrite. All V3.0 fixes retained. Major additions: empirical clustering audit requirements throughout; Norgate data extension and multi-period window; two-layer universe construction (index constituent + empirical ADV floor); Phase 0 database completeness audit as universal standing requirement; fixed cohort labels removed and replaced with discovered cluster language; clustering-specific Sprint Mode ambiguity resolved; feature branch availability by window documented in all auditor contexts. See Appendix A for full change log. |
 | 5.0 | De-hardcoded data-dependent assumptions. Regime-bucket minimum sample size made provisional (50) and confirmed/revised by Scott at Gate A1→A2 once actual cluster sizes are known (summary + Auditor 3 §10). Walk-forward train/test split dates moved to the Phase A4 planning document rather than fixed in advance. Auditor 4 B2→B3 limitation expanded to cover historical-extension sub-period selection bias. |
 | 6.0 | Reconciled with the V10 study design. (1) Fixed the walk-forward contradiction: training windows expand and overlap; non-overlap applies to TEST periods, with purging and embargo (Auditor 2). (2) Added two-dataset model checks: matched controls (discovery) vs. universe-sampled forward-labeled points (production). (3) Added `(ticker_id, as_of_date)` feature-store symmetry check. (4) Added `setup_labels` and `matched_controls` leakage checks (Auditor 1). (5) Added probability-calibration checks (Auditor 3). (6) Added findings-hierarchy tolerance pre-commitment check (Auditors 2/4). (7) Added mandatory prior-code provenance review with A/B/C bias tiers (Auditors 2/4). New tables recognized: `observations`, `setup_labels`, `matched_controls`, `feature_decay`, `findings_registry`, `cluster_stability`, `experiments`, `feature_catalog`, `tradeability_diagnostic`, `code_provenance`, `data_quality_exceptions`. See Appendix B. |
+| 7.0 | Feature-selection contamination control. The no-framework-consultation rule is necessary but not sufficient — the candidate feature *list* can implicitly encode practitioner concepts. Added: a pre-committed `feature_catalog.motivation` tag (theory/practitioner/generic/auto) on every feature; an Auditor-4 cross-tab of Tier-1 findings by motivation at Gate A3→A4 (did signals come from generic discovery or dressed-up practitioner concepts?); a generic/auto feature-bank coverage check so practitioner features compete against framework-neutral descriptors. See Appendix C. |
 
 ---
 
@@ -722,6 +723,10 @@ Same completeness requirements as Auditors 1–3, including pre-spec exploration
 25. Two-dataset framing: does the document keep the discovery analysis (matched controls) and the production classifier (universe-sampled forward labels) clearly distinct, or does it blur them in a way that lets a hindsight-anchored result masquerade as a deployment-ready one?
 26. Forward-label / K tuning: was the forward labeling window K chosen by neutral procedure (feature-decay on an early training block) rather than selected because a particular K produced better-looking results?
 
+**V7 additions — feature-selection contamination:**
+27. Feature-motivation cross-tab (Gate A3→A4): is every feature tagged with a pre-committed `motivation` in `feature_catalog` (theory / practitioner / generic / auto), and were the tags committed before A3 results were examined? Cross-tab the Tier-1 (production-candidate) findings by motivation and report it. This is not pass/fail — a practitioner-derived feature surviving is fine — but Scott must SEE whether the surviving signals came from generic discovery or are predominantly dressed-up practitioner concepts. If every Tier-1 finding is `practitioner_derived`, flag it as a SIGNIFICANT observation: the "discovery" may be re-finding known concepts rather than discovering new ones.
+28. Generic-bank coverage: did the feature set actually include a meaningful generic/auto feature bank (descriptors no practitioner would enumerate — entropy, autocorrelation structure, distributional moments, etc.), so practitioner-recognizable features competed against framework-neutral ones? If the catalog is composed almost entirely of practitioner-recognizable features, the motivation cross-tab is trivially biased and the feature-selection-contamination risk is unmitigated — flag this for Scott.
+
 ---
 
 ### YOUR REPORT FORMAT
@@ -1311,6 +1316,21 @@ All V4.0 and V5.0 changes are retained. V6.0 reconciles the auditor framework wi
 **Change Q — New tables recognized.** `observations`, `setup_labels`, `matched_controls`, `feature_decay`, `findings_registry`, `cluster_stability`, `experiments`, `feature_catalog`, `tradeability_diagnostic`, `code_provenance`, `data_quality_exceptions`.
 
 ---
+---
 
-*Scott Oman · Kaizen Alpha Research · June 2026 · Version 6.0*
+# APPENDIX C — VERSION 7.0 CHANGE LOG
+
+V7.0 adds feature-selection contamination control. The "no framework consultation until B3" rule prevents *explicit* contamination, but the analyst (and the auditor agents) already know CANSLIM/IBD/etc. and cannot un-know them — so the residual risk is that the candidate feature *list* is implicitly a practitioner's list, and "discovery" merely re-finds recognizable concepts (RS slope, accumulation, consolidation, proximity-to-highs, volume contraction). This is not necessarily wrong, but it must be made visible.
+
+**Change R — Feature `motivation` provenance.** `feature_catalog.motivation` (theory_motivated / practitioner_derived / generic_statistical / auto_generated), tagged at registration *before* A3 results are seen. Extends the §1A prior-code provenance idea from code to features. Tagging is by analyst origin/motivation (an honesty instrument, Auditor 4), not by whether a practitioner name exists for the math.
+
+**Change S — Tier-1 motivation cross-tab (Auditor 4 §27).** At Gate A3→A4, the surviving Tier-1 findings are cross-tabbed by motivation. Not pass/fail; surfaces whether signals came from generic discovery or pre-existing practitioner concepts. All-`practitioner_derived` Tier-1 set → SIGNIFICANT observation.
+
+**Change T — Generic/auto feature-bank coverage (Auditor 4 §28).** Tagging is diagnostic, not preventive; it only bites if practitioner features actually compete against a generic/auto bank (entropy, autocorrelation structure, distributional moments, Hurst, etc.). Auditor 4 verifies the bank is present and non-trivial; an almost-entirely-practitioner catalog leaves the contamination risk unmitigated and is flagged.
+
+**Note — move detector unchanged.** Independent review (and our own multi-agent code review) found the price/volatility-only, MA-prohibited, confirmation-not-prediction, labels-separated-from-features detector clean; no V7 change.
+
+---
+
+*Scott Oman · Kaizen Alpha Research · June 2026 · Version 7.0*
 *Pre-implementation framework — no analytical work has begun*

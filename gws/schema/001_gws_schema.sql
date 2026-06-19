@@ -191,7 +191,13 @@ CREATE TABLE IF NOT EXISTS gws.feature_catalog (
   description      TEXT,
   first_used_date DATE,
   status          TEXT,
-  deprecation_note TEXT
+  deprecation_note TEXT,
+  -- ORIGIN of the feature (why it entered the catalog), tagged at registration BEFORE
+  -- results are seen. An honesty/Auditor-4 instrument: lets Gate A3->A4 cross-tab which
+  -- Tier-1 findings came from generic discovery vs. pre-existing practitioner concepts.
+  motivation      TEXT NOT NULL DEFAULT 'unclassified'
+    CHECK (motivation IN ('theory_motivated','practitioner_derived',
+                          'generic_statistical','auto_generated','unclassified'))
 );
 
 -- ---------------------------------------------------------------------------
