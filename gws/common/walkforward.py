@@ -29,6 +29,7 @@ def expanding_splits(
     test_boundaries,
     label_horizon: int,
     embargo: int = 0,
+    drop_incomplete_labels: bool = True,
 ) -> Iterator[tuple[np.ndarray, np.ndarray]]:
     """Yield (train_idx, test_idx) for each expanding fold.
 
@@ -39,13 +40,23 @@ def expanding_splits(
         The final fold tests [boundaries[-1], max(t)+1).
     label_horizon : K, the forward-label window length in trading days (purge size).
     embargo : trading days excluded from training after each test period.
+    drop_incomplete_labels : if True (default), test observations whose forward-label
+        window extends past the last available day (t + label_horizon > max(t)) are
+        dropped. Without this the most recent K days score forming setups as negatives,
+        deflating recent-period metrics. Empty input yields no folds.
     """
     t = np.asarray(t)
+    if t.size == 0:
+        return
     bounds = list(test_boundaries)
-    last = int(t.max()) + 1
+    tmax = int(t.max())
+    last = tmax + 1
     for k, ts in enumerate(bounds):
         te = bounds[k + 1] if k + 1 < len(bounds) else last
-        test_idx = np.where((t >= ts) & (t < te))[0]
+        test_mask = (t >= ts) & (t < te)
+        if drop_incomplete_labels:
+            test_mask &= (t + label_horizon) <= tmax
+        test_idx = np.where(test_mask)[0]
         if len(test_idx) == 0:
             continue
         train_mask = t < ts
@@ -63,9 +74,8 @@ def ticker_disjoint_folds(tickers, n_splits: int = 5) -> Iterator[tuple[np.ndarr
     Every observation of a given ticker falls entirely in one fold's test set.
     """
     tickers = np.asarray(tickers)
-    uniq = np.unique(tickers)
-    fold_of_ticker = {tk: (idx % n_splits) for idx, tk in enumerate(uniq)}
-    assignment = np.array([fold_of_ticker[tk] for tk in tickers])
+    _, inv = np.unique(tickers, return_inverse=True)
+    assignment = inv % n_splits
     for f in range(n_splits):
         test_idx = np.where(assignment == f)[0]
         train_idx = np.where(assignment != f)[0]
