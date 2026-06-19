@@ -165,10 +165,15 @@ CREATE TABLE IF NOT EXISTS gws.features_fundamental (
   as_of_date     DATE    NOT NULL,
   feature_name   TEXT    NOT NULL,
   feature_value  NUMERIC,
-  period_end     DATE    NOT NULL,           -- PIT join date — never report_date
+  period_end     DATE    NOT NULL,           -- QUARTER IDENTIFIER only (which fiscal quarter)
+  available_date DATE    NOT NULL,           -- public-availability gate: filing/release date when
+                                             --   reliable, else period_end + conservative lag (OQ-9).
+                                             --   A quarter is usable only where available_date <= as_of_date.
+                                             --   Fundamentals are NEVER treated as known at period_end.
   period_type    TEXT,
   statement_type TEXT,                        -- 'income'|'balance_sheet'|'cash_flow'
-  PRIMARY KEY (ticker_id, as_of_date, feature_name)
+  PRIMARY KEY (ticker_id, as_of_date, feature_name),
+  CHECK (available_date <= as_of_date)        -- structural guard against quarter-end look-ahead
 );
 
 CREATE TABLE IF NOT EXISTS gws.features_context (
