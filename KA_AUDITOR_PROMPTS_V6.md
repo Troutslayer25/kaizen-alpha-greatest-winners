@@ -3,7 +3,7 @@
 ### Phase-Gate Audit Framework
 **Author:** Scott Oman · Kaizen Alpha Research
 **Date:** June 2026
-**Version:** 5.0 — Builds on V4.0. De-hardcodes assumptions that cannot be known before the data is examined: the regime-bucket minimum sample size is now provisional (50) and confirmed/revised by Scott at Gate A1→A2; the walk-forward train/test split is set in the Phase A4 planning document rather than fixed in advance; and Auditor 4's B2→B3 limitation explicitly covers historical-extension sub-period selection bias
+**Version:** 6.0 — Reconciles the auditor framework with the V10 study design (`KA_GREATEST_WINNERS_STUDY_V10.md`). Fixes a direct contradiction (the walk-forward "non-overlapping windows" rule, which would wrongly HALT V10's expanding purged/embargoed scheme). Adds coverage for design elements introduced after V5: the two-dataset model (matched controls for discovery vs. universe-sampled forward-labeled points for the production classifier), the `(ticker_id, as_of_date)`-keyed feature store, `setup_labels` and `matched_controls` leakage, probability calibration, the findings-hierarchy tolerance pre-commitment, and a mandatory prior-code provenance review (bias control on reused KA code). See Appendix B for the full change log.
 
 ---
 
@@ -15,6 +15,7 @@
 | 3.0 | Ten structural revisions applied based on pre-implementation framework critique |
 | 4.0 | Full rewrite. All V3.0 fixes retained. Major additions: empirical clustering audit requirements throughout; Norgate data extension and multi-period window; two-layer universe construction (index constituent + empirical ADV floor); Phase 0 database completeness audit as universal standing requirement; fixed cohort labels removed and replaced with discovered cluster language; clustering-specific Sprint Mode ambiguity resolved; feature branch availability by window documented in all auditor contexts. See Appendix A for full change log. |
 | 5.0 | De-hardcoded data-dependent assumptions. Regime-bucket minimum sample size made provisional (50) and confirmed/revised by Scott at Gate A1→A2 once actual cluster sizes are known (summary + Auditor 3 §10). Walk-forward train/test split dates moved to the Phase A4 planning document rather than fixed in advance. Auditor 4 B2→B3 limitation expanded to cover historical-extension sub-period selection bias. |
+| 6.0 | Reconciled with the V10 study design. (1) Fixed the walk-forward contradiction: training windows expand and overlap; non-overlap applies to TEST periods, with purging and embargo (Auditor 2). (2) Added two-dataset model checks: matched controls (discovery) vs. universe-sampled forward-labeled points (production). (3) Added `(ticker_id, as_of_date)` feature-store symmetry check. (4) Added `setup_labels` and `matched_controls` leakage checks (Auditor 1). (5) Added probability-calibration checks (Auditor 3). (6) Added findings-hierarchy tolerance pre-commitment check (Auditors 2/4). (7) Added mandatory prior-code provenance review with A/B/C bias tiers (Auditors 2/4). New tables recognized: `observations`, `setup_labels`, `matched_controls`, `feature_decay`, `findings_registry`, `cluster_stability`, `experiments`, `feature_catalog`, `tradeability_diagnostic`, `code_provenance`, `data_quality_exceptions`. See Appendix B. |
 
 ---
 
@@ -58,6 +59,24 @@ The study uses two data sources across a multi-decade window. Auditors must unde
 
 **The effective start date for each branch in each window is determined and documented by the Phase 0 database completeness audit — not assumed.** Auditors at Gate 0→A1 verify that effective start dates are documented. Auditors at all subsequent gates verify that features are not extracted from windows where their branch is unavailable.
 
+### Design Elements Auditors Must Understand (V6)
+
+The study design (`KA_GREATEST_WINNERS_STUDY_V10.md`) introduced mechanisms that auditors must understand before reviewing any planning document from Phase A1 onward:
+
+**Two datasets, two purposes.** The study runs two distinct analytical problems on two distinct datasets, and conflating them is an error:
+- *Discovery dataset* — setups detected at the move trough vs. **matched controls** (case-control, matched on date, size, industry, liquidity). Used for univariate distribution analysis, factor/industry neutralization, and clustering.
+- *Production dataset* — `(ticker, date)` points **sampled across the universe**, forward-labeled positive if a confirmed move's trough falls within the next K trading days. Features measured at the point's own date (at or before the trough). This matches deployment and is the production classifier's training data.
+
+`setup_labels` is the auditable forward-labeling artifact for the production dataset and is **not** derived from `matched_controls`. The two control concepts are separate.
+
+**Feature store keyed by `(ticker_id, as_of_date)`.** Features are a pure function of a ticker and an as-of date, computed only from data on or before that date. Setups, matched controls, and sampled points all consume the same feature source — making asymmetric extraction structurally impossible.
+
+**Forward-looking training is not look-ahead.** Labels legitimately use future information (a label is, by definition, about the future); the integrity requirement is that the *features* at each point use only data on or before that point's date. Auditors must not flag forward labels as look-ahead — they must verify the feature/label boundary.
+
+**Findings hierarchy with pre-committed tolerances.** Findings are tiered (Tier 1 production candidate / Tier 2 validated / Tier 3 exploratory) against tolerances pre-committed before results are seen and applied mechanically — no subjective override. Only Tier 1 features enter the production model.
+
+**Prior-code provenance (bias control).** Reused KA pipeline code is a contamination vector — it was shaped by a production pipeline influenced by external frameworks. Every reused component is tier-classified and recorded in `code_provenance`: Tier A (framework-neutral math/plumbing — attested once), Tier B (parameterized analytics — parameters must be re-derived, not inherited), Tier C (framework-embedded — excluded from discovery phases).
+
 ### How Independence Is Maintained
 
 **Pre-commitment is mechanical, not honor-based.** The pre-committed specification (Part 1 of the Planning Document) is committed to GitHub before any implementation work begins for that phase. The commit timestamp is proof of pre-commitment. Auditors verify the specification commit predates any implementation commits for that phase.
@@ -100,13 +119,13 @@ Seven phase gates, each requiring all four auditors to issue CLEAR:
 
 ### What Auditors Check — Summary for Implementation Agent
 
-**Auditor 1 (PIT):** Every rolling window strictly backward-looking. Fundamentals joined on `period_end` not `report_date`. Reporting lag documented and applied. Delisted tickers retained. Liquidity floor applied as time-varying daily flag from empirically discovered values — not a fixed dollar amount. Index constituent membership verified as PIT-clean. No query referencing NOW() or future dates. Feature extraction windows terminating at or before move start date. Cluster labels not used in any feature extraction join or filter. Features not extracted from windows where their branch is unavailable. Row counts and distributions plausible against pre-committed specification.
+**Auditor 1 (PIT):** Every rolling window strictly backward-looking. Fundamentals joined on `period_end` not `report_date`. Reporting lag documented and applied. Delisted tickers retained. Liquidity floor applied as time-varying daily flag from empirically discovered values — not a fixed dollar amount. Index constituent membership verified as PIT-clean. No query referencing NOW() or future dates. Feature extraction windows terminating at or before move start date. Cluster labels not used in any feature extraction join or filter. Features not extracted from windows where their branch is unavailable. **Features are a pure function of `(ticker_id, as_of_date)` using only data on or before `as_of_date` — identical for setups, matched controls, and sampled points.** **`setup_labels` leakage:** `linked_move_id`, `lead_time_days`, and `peak_date` never enter the feature set; forward labels do not leak into feature computation. **Matched-control PIT integrity:** matching variables computed only from data available on the control date; no matching variable encodes the move outcome. Row counts and distributions plausible against pre-committed specification.
 
-**Auditor 2 (Quant Methodology):** ATR threshold pre-committed and consistent across all tickers and time periods. Clustering genuinely unsupervised — number of clusters and boundaries not pre-specified. Cluster labels assigned post-hoc. Feature normalization fit on training data only. Feature combinations examined for interaction look-ahead risk. Class imbalance addressed. Feature importance via permutation not impurity. SHAP on out-of-sample predictions. Walk-forward windows non-overlapping. All methods consistent with study design.
+**Auditor 2 (Quant Methodology):** ATR threshold pre-committed and consistent across all tickers and time periods. Clustering genuinely unsupervised — number of clusters and boundaries not pre-specified; stability verified by bootstrap (ARI/VI) before downstream use. Cluster labels assigned post-hoc. Feature normalization (and any post-hoc probability calibration) fit on training/calibration folds only. Feature combinations examined for interaction look-ahead risk. Class imbalance addressed. Feature importance via permutation not impurity. SHAP on out-of-sample predictions. **Walk-forward training windows expand and overlap by design; non-overlap applies to TEST periods, with purging (remove training observations whose forward-label window overlaps the test period) and an embargo after each test period.** **Prior-code provenance:** every reused KA component is tier-classified (A/B/C) and recorded in `code_provenance`; Tier-A math attested once; Tier-B parameters re-derived (not inherited); Tier-C framework-embedded code excluded from discovery. **Findings-hierarchy tolerances pre-committed** before results are examined and applied mechanically. All methods consistent with study design.
 
-**Auditor 3 (Statistical):** Multiple comparison correction applied. Effect sizes alongside p-values. Sample sizes per cluster per regime bucket reported. Regime-conditioned analyses with fewer than the confirmed minimum bucket size (provisional: 50 moves — confirmed and locked at Gate A1→A2 when actual cluster sizes are known) require power-appropriate methods or constitute a HALT. Distribution assumptions tested. Autocorrelation addressed. Normalization leakage verified in Python code. Confidence intervals on all point estimates.
+**Auditor 3 (Statistical):** Multiple comparison correction applied. Effect sizes alongside p-values. Sample sizes per cluster per regime bucket reported. Regime-conditioned analyses with fewer than the confirmed minimum bucket size (provisional: 50 moves — confirmed and locked at Gate A1→A2 when actual cluster sizes are known) require power-appropriate methods or constitute a HALT. Distribution assumptions tested. **Ticker-level non-independence handled via ticker-clustered standard errors or block bootstrap by ticker** (a ticker contributes many observations). Normalization leakage verified in Python code. **Both targets reported where applicable — the forward-looking setup-vs-control binary (primary) and the cluster-characterization multi-class (secondary).** **Probability calibration assessed, not only discrimination** — Brier score and reliability curves; any calibration transform fit on a held-out split, never on the test set. Confidence intervals on all point estimates.
 
-**Auditor 4 (Bias):** Feature names neutral and descriptive. All discovered clusters analyzed symmetrically — no cluster disproportionately emphasized. Negative results reported with equal prominence. No references to CANSLIM, IBD, O'Neill, Minervini, or Zanger during Phases 0–A4. No post-hoc decisions without documentation. ATR threshold and liquidity floor not tuned toward expected results. Findings document reads as discovery, not confirmation. Gate-specific limitation disclosure required.
+**Auditor 4 (Bias):** Feature names neutral and descriptive. All discovered clusters analyzed symmetrically — no cluster disproportionately emphasized. Negative results reported with equal prominence. No references to CANSLIM, IBD, O'Neill, Minervini, or Zanger during Phases 0–A4. No post-hoc decisions without documentation. ATR threshold and liquidity floor not tuned toward expected results. **Reused prior KA code reviewed for framework contamination — Tier-B parameters re-derived rather than inherited (e.g., RS weighting), Tier-C framework-embedded code (named-indicator stacks, calibrated weights, named screens) kept out of discovery.** **Findings-hierarchy survival tolerances pre-committed before results were seen, not adjusted afterward.** Findings document reads as discovery, not confirmation. Gate-specific limitation disclosure required.
 
 ---
 ---
@@ -269,6 +288,14 @@ Work through the raw outputs systematically.
 29. Does the planning document include a lineage summary table showing, for each key output of this phase, which prior-phase table it joins to and what the join key is? If this gate is A2→A3 or A3→A4 and no lineage summary is present, issue HALT for incomplete submission.
 30. Verify that each lineage join is PIT-clean. The join key must not include `cluster_id`, `cluster_label`, `peak_date`, `total_pct_gain`, `max_intra_drawdown`, or any other column that is only available after the move completes — unless that join occurs after feature extraction is complete and cluster labels have been legitimately assigned.
 
+**V6 additions — two-dataset model, feature store, and forward labeling (required at Gates A1→A2 onward):**
+31. Is the feature store keyed by `(ticker_id, as_of_date)`? Verify the same feature value is produced for a given ticker-date regardless of whether that observation is a setup, a matched control, or a sampled point. Any feature computed via a path that depends on observation type is asymmetric extraction — a violation.
+32. For every feature, confirm computation uses only rows with date ≤ `as_of_date`. Spot-check the actual SQL/Python for any window that reaches past `as_of_date`.
+33. `setup_labels` leakage: confirm `linked_move_id`, `lead_time_days`, and `peak_date` are absent from all feature tables and from any feature-computation join. The forward label may use future information; the features for that point may not.
+34. Matched-control PIT integrity: are all matching variables (size bucket, sector/industry, liquidity bucket) computed only from data available on the control's own date? Does any matching variable encode the move outcome (directly or as a proxy)? Outcome-encoding in the match is leakage.
+35. Production dataset construction: are the sampled `(ticker, date)` points drawn from `universe_eligibility` as of each sampled date (no forward-looking eligibility)? Is the forward labeling window K the pre-committed value, applied identically to all points?
+36. Prior-code provenance: for any reused KA code consumed in this phase, is it recorded in `code_provenance` with its bias tier? Tier-A reuse needs a one-time attestation; Tier-B reuse must show the inherited parameters were stripped and re-derived; no Tier-C (framework-embedded) code may appear in a discovery-phase data path.
+
 ---
 
 ### OUTPUT FORMAT
@@ -386,7 +413,7 @@ Same completeness requirements as Auditor 1, including pre-spec exploration disc
 
 **Backtesting and validation:**
 26. Is temporal cross-validation applied correctly? Training data must contain zero dates from the test period. Verify actual date ranges in SQL and Python code.
-27. Are walk-forward windows non-overlapping and strictly sequential?
+27. Is the walk-forward scheme correct for this study's expanding design? **Training windows expand and therefore overlap across folds — this is correct and expected; do NOT HALT for overlapping training windows.** Verify instead: (a) TEST periods are non-overlapping and strictly sequential; (b) purging is applied — training observations whose forward-label window (length K) overlaps the test period are removed; (c) an embargo buffer follows each test period before training resumes; (d) ticker non-independence is handled by ticker-clustered standard errors or block bootstrap (not by forcing every ticker into a single fold, which is incompatible with an expanding temporal split — a ticker-disjoint GroupKFold may appear only as a separate robustness probe).
 28. Are performance metrics reported on out-of-sample data only? In-sample metrics clearly labeled as in-sample?
 
 **Historical extension robustness testing (Gate B2→B3):**
@@ -404,6 +431,15 @@ Same completeness requirements as Auditor 1, including pre-spec exploration disc
 
 **Scope coverage:**
 36. Are analyses conducted across all discovered clusters — not disproportionately focused on any single cluster? A plan that analyzes only the highest-magnitude cluster while treating others superficially is incomplete.
+
+**V6 additions — clustering, two datasets, calibration, provenance, findings hierarchy:**
+37. Cluster stability: was bootstrap stability (Adjusted Rand Index / Variation of Information) computed before the cluster structure was used downstream? If mean ARI < 0.6, was the continuous-spectrum (quantile-band) alternative adopted rather than forcing unstable clusters? The third clustering dimension is partly censored by the reversal threshold — verify a path-smoothness metric (uncensored) is used, with raw drawdown retained as a comparative/diagnostic input, and that comparative runs (smoothness / drawdown / both) are reported.
+38. Two-dataset separation: is the discovery analysis (univariate, neutralization, clustering) run on setups vs. matched controls, while the production classifier is trained on universe-sampled forward-labeled points? Confirm the production target is the forward-looking setup-vs-control binary, trained on points at varying pre-trough lead times — not on trough-anchored vectors only.
+39. Matched-control statistics: do significance tests respect the matched (paired/conditional) structure? Is over-matching checked — does the matching set stay minimal (date, size, industry, liquidity) and is the effective control-pool size verified rather than assumed?
+40. Walk-forward (expanding) re-verification: training windows expand/overlap (correct); confirm purge length is tied to K and the move/label horizons, and the embargo follows each test period. K (forward labeling window) chosen from feature-decay on an early training block and pre-committed — not tuned on the full dataset.
+41. Calibration: where the production score is a probability, is calibration evaluated (reliability curve, Brier) and any calibration transform (Platt/isotonic) fit on a held-out calibration split — never the test set?
+42. Findings-hierarchy tolerances: were the Tier-1 promotion tolerances (walk-forward consistency fraction, fraction of effect retained after both neutralizations, pre-trough actionability) pre-committed before results were examined, and applied mechanically with no subjective override?
+43. Prior-code provenance: confirm each reused KA component is tier-classified in `code_provenance`; Tier-B inherited parameters (e.g., RS lookback weighting) were re-derived empirically rather than carried over; no Tier-C framework-embedded code is in a discovery data path.
 
 ---
 
@@ -527,6 +563,13 @@ Same completeness requirements as Auditors 1 and 2, including pre-spec explorati
 26. Are confidence intervals reported alongside all point estimates?
 27. Are the limitations of each statistical procedure documented?
 28. Is any procedure applied outside its documented assumptions without explicit justification?
+
+**V6 additions — ticker non-independence, two targets, calibration:**
+29. Ticker-level non-independence: a single ticker contributes many observations. Are all significance tests computed with ticker-clustered standard errors or block bootstrap by ticker? Naive standard errors that treat observations as independent overstate significance — a HALT-level error if uncorrected on the primary findings.
+30. Two targets: are results reported for both the primary forward-looking setup-vs-control binary AND, where applicable, the secondary cluster-characterization multi-class target? Are sample sizes reported for each?
+31. Calibration vs. discrimination: for the production probability score, are BOTH discrimination (ROC-AUC, precision/recall, decile separation) AND calibration (Brier score, reliability/calibration curve) reported? A well-discriminating but miscalibrated probability misranks — discrimination alone is insufficient.
+32. Calibration leakage: if a calibration transform (Platt/isotonic) is applied, was it fit on a held-out calibration split distinct from both training and test? A calibration fit on the test set invalidates the reported calibration.
+33. Findings-hierarchy power: where Tier-1 promotion depends on walk-forward consistency, is the per-period sample size adequate, and are confidence intervals reported on the consistency fraction itself?
 
 ---
 
@@ -672,6 +715,12 @@ Same completeness requirements as Auditors 1–3, including pre-spec exploration
 20. Are there findings with no analog in known frameworks — genuinely novel characteristics?
 21. Is the lock date documented as a GitHub commit timestamp predating any external consultation?
 22. Does the findings document address all discovered clusters with equal depth — not just the ones that confirmed expectations?
+
+**V6 additions — prior-code contamination, findings-tolerance pre-commitment, two-dataset framing:**
+23. Prior-code contamination: review the `code_provenance` register. Does any reused KA component carry a framework-derived choice into discovery? Specifically — is any Tier-B parameter (e.g., a relative-strength lookback weighting, a named lookback window) inherited from the production pipeline rather than re-derived empirically by this study? Is any Tier-C framework-embedded component (named-indicator stack, calibrated screen weights, named screen definitions) present in a Phase 0–A4 data path? Inherited framework choices are an information-contamination event even when the code is mechanically correct.
+24. Findings-hierarchy tolerances: were the Tier-1 survival tolerances committed to GitHub before any results were examined? Is there any sign a tolerance was adjusted after seeing which features would pass or fail? A tolerance tuned to admit a favored feature (or exclude an inconvenient one) is parameter tuning toward expected results.
+25. Two-dataset framing: does the document keep the discovery analysis (matched controls) and the production classifier (universe-sampled forward labels) clearly distinct, or does it blur them in a way that lets a hindsight-anchored result masquerade as a deployment-ready one?
+26. Forward-label / K tuning: was the forward labeling window K chosen by neutral procedure (feature-decay on an early training block) rather than selected because a particular K produced better-looking results?
 
 ---
 
@@ -1237,6 +1286,31 @@ All changes from V3.0 are retained in V4.0. The following additional changes wer
 *What changed:* Auditor 4 now explicitly checks for three pre-commitment risk points unique to this study's design: ATR threshold chosen to produce a particular move population; liquidity floor adjusted after observing its effect on the universe; clustering re-run until a preferred result was produced. These are added as Type 1 contamination items and as specific examination points. Scott's human review checklist (Sections A and B) now includes specific questions about whether these parameters felt suspiciously aligned with prior expectations. The agent report format adds "Parameter Tuning" as a finding type.
 
 ---
+---
 
-*Scott Oman · Kaizen Alpha Research · June 2026 · Version 4.0*
+# APPENDIX B — VERSION 6.0 CHANGE LOG
+
+All V4.0 and V5.0 changes are retained. V6.0 reconciles the auditor framework with the V10 study design.
+
+**Change I — Walk-forward contradiction fixed (critical).** V5 Auditor 2 §27 required walk-forward windows to be "non-overlapping and strictly sequential." V10 uses an *expanding* walk-forward (training windows grow and overlap) with purging and embargo. An auditor applying §27 literally would wrongly HALT correct work. §27 now states that training windows expand/overlap by design; non-overlap applies to TEST periods; and verifies purging, embargo, and ticker-clustered inference instead.
+
+**Change J — Two-dataset model recognized.** A new framework-overview subsection and checklist items (Auditor 1 §38, Auditor 2 §38) distinguish the discovery dataset (setups vs. matched controls) from the production dataset (universe-sampled, forward-labeled points). `setup_labels` is recognized as an independent artifact, not derived from `matched_controls`.
+
+**Change K — `(ticker_id, as_of_date)` feature store + forward-labeling integrity.** Auditor 1 §31–35 verify the feature store is keyed by ticker-date (structural extraction symmetry), features use only data ≤ `as_of_date`, `setup_labels` fields (`linked_move_id`/`lead_time_days`/`peak_date`) never enter features, matched-control matching variables are PIT-clean and non-outcome-encoding, and the production sampling respects PIT eligibility. The framework overview clarifies that forward labels using future information are NOT look-ahead — only the feature/label boundary matters.
+
+**Change L — Probability calibration.** Auditor 3 §31–32 require both discrimination and calibration (Brier, reliability curves) for the production probability score, with any calibration transform fit on a held-out split only.
+
+**Change M — Findings-hierarchy tolerance pre-commitment.** Auditor 2 §42 and Auditor 4 §24 verify Tier-1 survival tolerances were pre-committed before results were examined and applied mechanically.
+
+**Change N — Prior-code provenance review (bias control).** Auditor 2 §43 and Auditor 4 §23 require every reused KA component to be tier-classified (A/B/C) in `code_provenance`: Tier-A math attested once; Tier-B parameters re-derived not inherited; Tier-C framework-embedded code excluded from discovery. This closes a contamination vector unique to a study built atop an existing framework-influenced pipeline.
+
+**Change O — Ticker-level non-independence elevated.** Auditor 3 §29 makes ticker-clustered standard errors / block bootstrap a correctness requirement (a ticker contributes many observations), HALT-level if uncorrected on primary findings.
+
+**Change P — Clustering stability + censored-dimension caution.** Auditor 2 §37 verifies bootstrap ARI/VI stability, the continuous-spectrum fallback when unstable, and that the censored drawdown dimension is handled via an uncensored smoothness metric with comparative runs.
+
+**Change Q — New tables recognized.** `observations`, `setup_labels`, `matched_controls`, `feature_decay`, `findings_registry`, `cluster_stability`, `experiments`, `feature_catalog`, `tradeability_diagnostic`, `code_provenance`, `data_quality_exceptions`.
+
+---
+
+*Scott Oman · Kaizen Alpha Research · June 2026 · Version 6.0*
 *Pre-implementation framework — no analytical work has begun*
