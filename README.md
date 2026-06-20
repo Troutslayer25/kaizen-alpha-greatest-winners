@@ -5,7 +5,7 @@ Discovery-first quantitative study of the pre-move characteristics of stocks bef
 ## Governing documents
 
 - **Study design:** `KA_GREATEST_WINNERS_STUDY_V10.md` (terminal design version; source doc held outside the repo)
-- **Audit framework:** `KA_AUDITOR_PROMPTS_V7.md` (four independent phase-gate auditors)
+- **Audit framework:** `KA_AUDITOR_PROMPTS_V8.md` (four independent phase-gate auditors)
 - **Phase 0 pre-commit:** `phases/PHASE0_PRECOMMIT.md`
 - **Project log:** `KA_PROJECT_LOG.md` (every HALT / escalation / gate decision)
 
@@ -31,7 +31,7 @@ Study tables live in a dedicated `gws` schema inside the `kaizen_alpha` Postgres
 
 ## Prior-code reuse governance (bias control)
 
-Reused KA code is classified A (framework-neutral math — attest once), B (parameterized — re-derive parameters, never inherit), or C (framework-embedded — excluded from discovery). Every reuse is recorded in `gws.code_provenance` and reviewed by Auditors 2 and 4. See `KA_AUDITOR_PROMPTS_V7.md` §1A.
+Reused KA code is classified A (framework-neutral math — attest once), B (parameterized — re-derive parameters, never inherit), or C (framework-embedded — excluded from discovery). Every reuse is recorded in `gws.code_provenance` and reviewed by Auditors 2 and 4. See `KA_AUDITOR_PROMPTS_V8.md` §1A.
 
 ## Running tests
 

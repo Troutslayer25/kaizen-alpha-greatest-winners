@@ -3,7 +3,7 @@
 ### Phase-Gate Audit Framework
 **Author:** Scott Oman · Kaizen Alpha Research
 **Date:** June 2026
-**Version:** 7.0 — Builds on V6.0. Adds **feature-selection contamination** control: the no-framework-consultation rule is necessary but not sufficient, because the candidate feature *list* can implicitly be a practitioner's list even with no explicit framework reference. Every feature now carries a pre-committed `motivation` tag (theory / practitioner / generic / auto), Auditor 4 cross-tabs Tier-1 findings by motivation at Gate A3→A4, and the design commits to a generic/auto feature bank so practitioner-recognizable features compete against framework-neutral descriptors. See Appendix C for the full change log; V6.0 reconciliation retained (Appendix B).
+**Version:** 8.0 — Builds on V7.0. Reconciles the framework with three design changes ratified after V7: (1) the institutional **ADV liquidity floor was removed** from universe construction — eligibility is `index_member ∧ data_valid ∧ above_min_price (~$1) ∧ 252-day history`; liquidity is a **recorded feature** (discovered in A3), and tradeability/capacity is applied at the **deployment layer**, not as an early gate. (2) The move detector is the **threshold-free, multi-scale MFE detector** (continuous move population; significance defined by **percentile**, not a hardcoded cutoff; ATR-swing retained only as a cross-check baseline). (3) Clustering uses **magnitude, duration, and an uncensored smoothness metric** — raw intra-move drawdown is comparative/diagnostic only (it is censored by the move-end rule). See Appendix D for the full change log; V6/V7 appendices retained.
 
 ---
 
@@ -17,6 +17,7 @@
 | 5.0 | De-hardcoded data-dependent assumptions. Regime-bucket minimum sample size made provisional (50) and confirmed/revised by Scott at Gate A1→A2 once actual cluster sizes are known (summary + Auditor 3 §10). Walk-forward train/test split dates moved to the Phase A4 planning document rather than fixed in advance. Auditor 4 B2→B3 limitation expanded to cover historical-extension sub-period selection bias. |
 | 6.0 | Reconciled with the V10 study design. (1) Fixed the walk-forward contradiction: training windows expand and overlap; non-overlap applies to TEST periods, with purging and embargo (Auditor 2). (2) Added two-dataset model checks: matched controls (discovery) vs. universe-sampled forward-labeled points (production). (3) Added `(ticker_id, as_of_date)` feature-store symmetry check. (4) Added `setup_labels` and `matched_controls` leakage checks (Auditor 1). (5) Added probability-calibration checks (Auditor 3). (6) Added findings-hierarchy tolerance pre-commitment check (Auditors 2/4). (7) Added mandatory prior-code provenance review with A/B/C bias tiers (Auditors 2/4). New tables recognized: `observations`, `setup_labels`, `matched_controls`, `feature_decay`, `findings_registry`, `cluster_stability`, `experiments`, `feature_catalog`, `tradeability_diagnostic`, `code_provenance`, `data_quality_exceptions`. See Appendix B. |
 | 7.0 | Feature-selection contamination control. The no-framework-consultation rule is necessary but not sufficient — the candidate feature *list* can implicitly encode practitioner concepts. Added: a pre-committed `feature_catalog.motivation` tag (theory/practitioner/generic/auto) on every feature; an Auditor-4 cross-tab of Tier-1 findings by motivation at Gate A3→A4 (did signals come from generic discovery or dressed-up practitioner concepts?); a generic/auto feature-bank coverage check so practitioner features compete against framework-neutral descriptors. See Appendix C. |
+| 8.0 | Reconciled with three ratified design changes. (1) **Liquidity floor removed as a universe gate** — eligibility = index_member ∧ data_valid ∧ above_min_price ($1) ∧ 252-day history; liquidity recorded as a feature, capacity applied at deployment. All Auditor 1/2/4 "two-layer / ADV floor" checks retargeted: verify ADV does NOT gate eligibility; verify the data-validity screen + "moves on actually-traded bars" anti-pollution rule; pre-commitment checks retargeted to the ATR/percentile detector parameters. (2) **MFE detector canonical** — continuous population, percentile significance (no hardcoded size cutoff), ATR-swing is a cross-check baseline. (3) **Clustering on magnitude/duration/smoothness** — raw drawdown comparative/diagnostic only. See Appendix D. |
 
 ---
 
@@ -30,7 +31,7 @@ This framework exists to protect that foundation.
 
 ### What This Study Is Measuring
 
-The study identifies pre-move characteristics of stocks making significant price moves across a range of magnitudes and durations. The move population is not pre-defined — it is discovered empirically from the data. The study does not impose fixed cohort boundaries before looking at the data. Move types, cluster boundaries, and cluster identities emerge from unsupervised clustering of the full move population on three dimensions: return magnitude, duration, and intra-move drawdown.
+The study identifies pre-move characteristics of stocks making significant price moves across a range of magnitudes and durations. The move population is not pre-defined — it is discovered empirically from the data. The study does not impose fixed cohort boundaries before looking at the data. Move types, cluster boundaries, and cluster identities emerge from unsupervised clustering of the full move population on three dimensions: return magnitude, duration, and an uncensored smoothness/path-efficiency metric. (Raw intra-move drawdown is retained as a comparative/diagnostic input only — it is mechanically censored by the move-end rule, so clustering on it would partly cluster on a detector parameter.)
 
 The working placeholder labels used in earlier versions of this framework (Monster, Winner, Near-winner, Control) are retired. All references in these auditor prompts use cluster-neutral language: discovered clusters, control group, move population, high-magnitude cluster, and similar descriptive terms. The actual cluster identities and their boundaries are determined by the data in Phase A1.
 
@@ -110,7 +111,7 @@ Seven phase gates, each requiring all four auditors to issue CLEAR:
 
 | Gate | Transition | Notes |
 |---|---|---|
-| Gate 0→A1 | Universe construction and data audit complete | Liquidity floor discovery reviewed. Completeness audit reviewed. Index constituent PIT verified. |
+| Gate 0→A1 | Universe construction and data audit complete | Data-validity screen reviewed (ADV does NOT gate eligibility; liquidity recorded as a feature). Completeness audit reviewed. Index constituent PIT verified. |
 | Gate A1→A2 | Move population mapped and clusters discovered | Clustering procedure verified. Labels confirmed post-hoc. ATR threshold pre-commitment verified. |
 | Gate A2→A3 | All feature extraction complete | Lineage summary required. Feature branch availability by window verified. |
 | Gate A3→A4 | Statistical discovery complete | **Most critical gate. Lineage summary required. Auditor 4 maximum scrutiny.** |
@@ -120,13 +121,13 @@ Seven phase gates, each requiring all four auditors to issue CLEAR:
 
 ### What Auditors Check — Summary for Implementation Agent
 
-**Auditor 1 (PIT):** Every rolling window strictly backward-looking. Fundamentals joined on `period_end` not `report_date`. Reporting lag documented and applied. Delisted tickers retained. Liquidity floor applied as time-varying daily flag from empirically discovered values — not a fixed dollar amount. Index constituent membership verified as PIT-clean. No query referencing NOW() or future dates. Feature extraction windows terminating at or before move start date. Cluster labels not used in any feature extraction join or filter. Features not extracted from windows where their branch is unavailable. **Features are a pure function of `(ticker_id, as_of_date)` using only data on or before `as_of_date` — identical for setups, matched controls, and sampled points.** **`setup_labels` leakage:** `linked_move_id`, `lead_time_days`, and `peak_date` never enter the feature set; forward labels do not leak into feature computation. **Matched-control PIT integrity:** matching variables computed only from data available on the control date; no matching variable encodes the move outcome. Row counts and distributions plausible against pre-committed specification.
+**Auditor 1 (PIT):** Every rolling window strictly backward-looking. Fundamentals joined on `period_end` not `report_date`. Reporting lag documented and applied. Delisted tickers retained. Eligibility is `index_member ∧ data_valid ∧ above_min_price ∧ 252-day history` applied as a time-varying daily flag — **ADV/dollar-volume are recorded as features, never gate eligibility**. Index constituent membership verified as PIT-clean. No query referencing NOW() or future dates. Feature extraction windows terminating at or before move start date. Cluster labels not used in any feature extraction join or filter. Features not extracted from windows where their branch is unavailable. **Features are a pure function of `(ticker_id, as_of_date)` using only data on or before `as_of_date` — identical for setups, matched controls, and sampled points.** **`setup_labels` leakage:** `linked_move_id`, `lead_time_days`, and `peak_date` never enter the feature set; forward labels do not leak into feature computation. **Matched-control PIT integrity:** matching variables computed only from data available on the control date; no matching variable encodes the move outcome. Row counts and distributions plausible against pre-committed specification.
 
 **Auditor 2 (Quant Methodology):** ATR threshold pre-committed and consistent across all tickers and time periods. Clustering genuinely unsupervised — number of clusters and boundaries not pre-specified; stability verified by bootstrap (ARI/VI) before downstream use. Cluster labels assigned post-hoc. Feature normalization (and any post-hoc probability calibration) fit on training/calibration folds only. Feature combinations examined for interaction look-ahead risk. Class imbalance addressed. Feature importance via permutation not impurity. SHAP on out-of-sample predictions. **Walk-forward training windows expand and overlap by design; non-overlap applies to TEST periods, with purging (remove training observations whose forward-label window overlaps the test period) and an embargo after each test period.** **Prior-code provenance:** every reused KA component is tier-classified (A/B/C) and recorded in `code_provenance`; Tier-A math attested once; Tier-B parameters re-derived (not inherited); Tier-C framework-embedded code excluded from discovery. **Findings-hierarchy tolerances pre-committed** before results are examined and applied mechanically. All methods consistent with study design.
 
 **Auditor 3 (Statistical):** Multiple comparison correction applied. Effect sizes alongside p-values. Sample sizes per cluster per regime bucket reported. Regime-conditioned analyses with fewer than the confirmed minimum bucket size (provisional: 50 moves — confirmed and locked at Gate A1→A2 when actual cluster sizes are known) require power-appropriate methods or constitute a HALT. Distribution assumptions tested. **Ticker-level non-independence handled via ticker-clustered standard errors or block bootstrap by ticker** (a ticker contributes many observations). Normalization leakage verified in Python code. **Both targets reported where applicable — the forward-looking setup-vs-control binary (primary) and the cluster-characterization multi-class (secondary).** **Probability calibration assessed, not only discrimination** — Brier score and reliability curves; any calibration transform fit on a held-out split, never on the test set. Confidence intervals on all point estimates.
 
-**Auditor 4 (Bias):** Feature names neutral and descriptive. All discovered clusters analyzed symmetrically — no cluster disproportionately emphasized. Negative results reported with equal prominence. No references to CANSLIM, IBD, O'Neill, Minervini, or Zanger during Phases 0–A4. No post-hoc decisions without documentation. ATR threshold and liquidity floor not tuned toward expected results. **Reused prior KA code reviewed for framework contamination — Tier-B parameters re-derived rather than inherited (e.g., RS weighting), Tier-C framework-embedded code (named-indicator stacks, calibrated weights, named screens) kept out of discovery.** **Findings-hierarchy survival tolerances pre-committed before results were seen, not adjusted afterward.** Findings document reads as discovery, not confirmation. Gate-specific limitation disclosure required.
+**Auditor 4 (Bias):** Feature names neutral and descriptive. All discovered clusters analyzed symmetrically — no cluster disproportionately emphasized. Negative results reported with equal prominence. No references to CANSLIM, IBD, O'Neill, Minervini, or Zanger during Phases 0–A4. No post-hoc decisions without documentation. ATR/percentile detector parameters not tuned toward expected results (the liquidity floor is no longer a universe gate; capacity is applied only at deployment). **Reused prior KA code reviewed for framework contamination — Tier-B parameters re-derived rather than inherited (e.g., RS weighting), Tier-C framework-embedded code (named-indicator stacks, calibrated weights, named screens) kept out of discovery.** **Findings-hierarchy survival tolerances pre-committed before results were seen, not adjusted afterward.** Findings document reads as discovery, not confirmation. Gate-specific limitation disclosure required.
 
 ---
 ---
@@ -165,11 +166,12 @@ The Kaizen Alpha Greatest Winners Study is a quantitative research project by Sc
 
 **Extracting fundamental features from the 1950–2009 window is a PIT violation even if the SQL runs without error.** The data is simply not available for that period.
 
-**Move population design:** The study does not use pre-defined cohorts. Phase A1 detects all significant price moves across the eligible universe, characterizes each move on three dimensions (return magnitude, duration, intra-move drawdown), and discovers the natural cluster structure empirically through unsupervised clustering. Cluster labels are assigned post-hoc after clustering is complete. The cluster labels that appear in planning documents after Phase A1 are descriptive outputs of the data — they are not pre-specified inputs.
+**Move population design:** The study does not use pre-defined cohorts. Phase A1 detects all significant price moves across the eligible universe using a threshold-free, multi-scale detector (continuous move population; "significant" defined as a percentile of the discovered magnitude distribution, not a hardcoded size cutoff), characterizes each move on three dimensions (return magnitude, duration, uncensored smoothness; raw drawdown comparative-only), and discovers the natural cluster structure empirically through unsupervised clustering. Cluster labels are assigned post-hoc after clustering is complete. The cluster labels that appear in planning documents after Phase A1 are descriptive outputs of the data — they are not pre-specified inputs.
 
-**Universe construction uses two layers:**
-1. Index constituent membership (Norgate historical data) — quality filter, applied as PIT daily flag
-2. Empirically discovered 50-day ADV floor — liquidity filter, applied as time-varying daily flag; floor value discovered separately for 1950–2009 and 2010–present windows
+**Universe construction:** eligibility is a PIT daily flag = `index_member ∧ data_valid ∧ above_min_price ∧ 252-day history`.
+1. Index constituent membership (Norgate historical data) — quality filter, applied as PIT daily flag.
+2. Data-validity screen — actually-traded (non-zero/real volume), clean data (passes the QC sweep), and a minimal nominal-price floor (~$1) to avoid penny-spread artifacts. This is a data-quality screen, NOT a liquidity preference.
+ADV/dollar-volume/market-cap are **recorded as features** (so A3 can discover whether liquidity governs move success) and are **never** an eligibility gate. Tradeability/capacity is applied at the deployment/scoring layer.
 
 **This study's findings drive real financial decisions by Scott Oman.** A single PIT violation can silently invalidate an entire phase of analysis.
 
@@ -190,7 +192,7 @@ Required elements:
 - [ ] Min/max/mean for key numeric columns
 
 **Gate 0→A1 additional requirements:**
-- [ ] Liquidity floor discovery outputs — the pre-committed discovery method, the annual floor values produced, and the distribution data used
+- [ ] Data-validity screen outputs — the actually-traded/clean-data/min-price rules and the count of (ticker, date) cells excluded as invalid (distinct from index-membership exclusions); confirmation that ADV/dollar-volume are recorded but do NOT gate eligibility
 - [ ] Index constituent coverage verification — confirmation that constituent lists are available and PIT-clean for the full study window
 - [ ] Effective start dates documented for each feature branch in each window
 
@@ -242,13 +244,13 @@ Work through the raw outputs systematically.
 2. Are effective start dates documented for each feature branch in each window? Are these dates based on actual data examination rather than assumed?
 3. Is the cross-validation between FMP and Norgate for the 2010–present overlap documented with actual discrepancy counts?
 
-**Universe construction — two-layer filter (Gate 0→A1 only):**
+**Universe construction (Gate 0→A1 only):**
 4. Is the index constituent filter applied as a PIT daily flag? Verify in the SQL: a ticker's eligibility on any given date must reference only its actual constituent status on that date — no forward-looking membership.
-5. Is the `liquidity_floors` table populated with the empirically discovered floor values? Was the discovery method pre-committed before any floor values were computed? Verify the GitHub commit timestamp for the discovery method predates any floor computation.
-6. Is the liquidity floor applied as a time-varying daily flag using the discovered floor values for the appropriate period (1950–2009 floor for that window; 2010–present floor for that window)?
+5. **Confirm ADV/dollar-volume do NOT gate eligibility.** Inspect the `universe_eligibility` logic: `eligible` must be a function of `index_member`, `data_valid`, `above_min_price`, and history only. Any branch where `eligible` depends on an ADV threshold is a violation (the liquidity floor was removed as a gate). ADV/dollar-volume columns must be present as recorded features.
+6. Is the data-validity screen correct and PIT-clean? Verify it excludes only genuinely invalid rows (zero/again-non-traded volume, corrupted prices, below the ~$1 penny-spread floor) — and that this is documented as a data-quality screen, not a liquidity preference.
 7. Are delisted tickers present in the universe through their last active date? Check for ticker_ids with last active dates before today.
-8. Are zero-volume rows retained as non-trading flags — not deleted?
-9. Does the `universe_eligibility` table correctly distinguish tickers that fail the quality filter from those that fail the liquidity filter?
+8. Are zero-volume rows retained as non-trading flags — not deleted — while still failing `data_valid` for the affected dates (so moves cannot form on non-traded bars)?
+9. Does the `universe_eligibility` table correctly distinguish tickers that fail the quality filter (index membership) from those that fail the data-validity screen? (Liquidity is not a gate, so there is no "liquidity-filter failure" to distinguish.)
 
 **Fundamental data joins:**
 10. Is `period_end` used for all fundamental joins — never `report_date`?
@@ -350,12 +352,12 @@ The Kaizen Alpha Greatest Winners Study uses a production PostgreSQL database to
 
 **Phase A1 design — empirical move population discovery:**
 - ATR-normalized peak/trough detection with pre-committed threshold
-- Every detected move characterized on three dimensions: return magnitude, duration, intra-move drawdown
+- Every detected move characterized on three dimensions: return magnitude, duration, uncensored smoothness (raw drawdown comparative/diagnostic only)
 - Unsupervised clustering discovers the natural cluster structure — number and boundaries not pre-specified
 - Cluster labels assigned post-hoc, descriptively, after clustering completes
 
 **Methods in use by phase:**
-- **Phase 0:** Two-layer universe construction (index constituent quality filter + empirical ADV liquidity floor); database completeness audit
+- **Phase 0:** Universe construction (index-constituent quality filter + data-validity screen; ADV recorded as a feature, not a gate); database completeness audit
 - **Phase A1:** ATR-normalized move detection; three-dimensional move characterization; unsupervised clustering; post-hoc labeling
 - **Phase A2:** Rolling window technical features; PIT fundamental joins; market context snapshots
 - **Phase A3:** Univariate distribution analysis; RF/XGBoost multi-class classification; SHAP; mutual information; regime-conditioned analysis
@@ -373,12 +375,12 @@ Same completeness requirements as Auditor 1, including pre-spec exploration disc
 
 ### STEP 2 — CONTENT REVIEW
 
-**Universe construction — two-layer filter (Gate 0→A1):**
+**Universe construction (Gate 0→A1):**
 1. Is the index constituent filter applied as a genuinely PIT daily flag? This is a quality filter — it excludes OTC stocks, warrants, rights, foreign cross-listings, and other low-quality instruments using historical index membership. Verify the SQL references only the constituent status on the analysis date.
-2. Is the liquidity floor discovery method pre-committed? Was the method committed to GitHub before any floor values were computed or examined? Verify GitHub timestamps.
-3. Was the liquidity floor discovery run separately for the 1950–2009 and 2010–present windows? A single fixed dollar floor applied across the full window is a methodology violation — market structure in earlier decades was materially different.
-4. Is the discovered floor applied as a time-varying daily flag using period-appropriate values?
-5. Does the liquidity floor value appear reasonable given the market structure of the relevant period? A 2010-calibrated floor applied to 1960 data would exclude the majority of legitimately tradeable stocks — flag this for Scott's review.
+2. **Is liquidity correctly kept OUT of the eligibility gate?** Confirm `eligible` is not a function of any ADV/dollar-volume threshold. The institutional liquidity floor was removed because filtering the universe on liquidity early forecloses discovering whether liquidity governs move success. Liquidity must instead be a recorded feature.
+3. Is the data-validity screen a genuine data-quality screen (actually-traded volume, clean prices, ~$1 penny-spread floor) rather than a liquidity preference? Verify the min-price floor is justified on data-validity grounds, not as a tradeability cutoff.
+4. Is the anti-pollution rule enforced — i.e., moves cannot form on non-traded/stale bars? Since the universe now admits the thinner end of index members, this screen (not a liquidity floor) is what keeps the detected-move population clean.
+5. Is capacity/tradeability deferred to the deployment/scoring layer (the capacity diagnostic), and not applied as an early gate? A capacity filter imposed during discovery is a methodology violation.
 
 **ATR threshold and move detection (Gate A1→A2):**
 6. Was the ATR threshold pre-committed to GitHub before any move detection was run? Verify timestamp.
@@ -419,7 +421,7 @@ Same completeness requirements as Auditor 1, including pre-spec exploration disc
 
 **Historical extension robustness testing (Gate B2→B3):**
 29. Is the historical extension robustness testing (1950–2009 window) conducted using only price/volume features — not fundamental or market context features that are unavailable for that window?
-30. Is the historically appropriate liquidity floor applied for the extension window — not the 2010–present floor?
+30. Is the extension-window universe constructed by the same rules as the primary window — index membership + data-validity screen, with liquidity recorded (not gated)? Period-appropriate liquidity is handled by the recorded feature and the deployment-layer capacity analysis, not by an eligibility floor.
 31. Is the historically appropriate universe (Norgate-sourced index constituents for the relevant period) used for the extension window?
 
 **Regime analysis:**
@@ -623,9 +625,9 @@ This role exists because Claude auditing Claude for confirmation bias has a fund
 
 The Kaizen Alpha Greatest Winners Study is a discovery-first quantitative research project. Its defining principle: the characteristics of stocks making significant price moves are identified independently from raw data before any external framework is consulted.
 
-**The empirical clustering design is the most important integrity principle:** The move population structure — how many cluster types exist, where their boundaries fall, what their characteristics are — must emerge from the data without pre-specification. Any evidence that the number of clusters, the cluster boundaries, the ATR threshold, or the liquidity floor were chosen to produce a particular outcome is a critical finding.
+**The empirical clustering design is the most important integrity principle:** The move population structure — how many cluster types exist, where their boundaries fall, what their characteristics are — must emerge from the data without pre-specification. Any evidence that the number of clusters, the cluster boundaries, the detector parameters (ATR multiple / trailing-stop scales / percentile-significance cutoff), or the data-validity min-price threshold were chosen to produce a particular outcome is a critical finding.
 
-**The liquidity floor and ATR threshold are pre-commitment risk points:** Both parameters define which stocks and which moves enter the study. Both are determined before analytical results are seen. Both must be chosen by pre-committed method — not adjusted to produce a desired population size or distribution.
+**The detector parameters and the data-validity min-price are pre-commitment risk points:** The detector parameters (ATR multiple, trailing-stop scale set, percentile-significance cutoff) define which moves enter the study, and the min-price threshold defines a data-validity boundary. All are determined before analytical results are seen and must be chosen by pre-committed method — not adjusted to produce a desired population size or distribution. (Note: liquidity is no longer a universe gate, so it is not a population-defining parameter here; the relevant remaining risk is whether the min-price *data-validity* threshold was nudged to shape the population.)
 
 External frameworks that must not influence Phases 0 through A4:
 - CANSLIM (O'Neill's seven-characteristic framework)
@@ -648,15 +650,16 @@ Same completeness requirements as Auditors 1–3, including pre-spec exploration
 
 **Pre-spec exploration disclosure — special attention:** If Part 1 discloses that any exploratory queries were conducted before the specification was written, this is an automatic finding. Rate severity based on what was examined: schema inspection only is lower risk; examining move distributions or cluster characteristics before writing the clustering spec is higher risk. Describe specifically what was disclosed and the contamination risk.
 
-**ATR threshold and liquidity floor disclosures — special attention at Gate 0→A1 and A1→A2:** If Part 1 discloses that the ATR threshold or liquidity floor values were examined before the pre-committed method was documented, this is an automatic CRITICAL finding. Both parameters gate which data enters the study — pre-spec examination of their effects is a fundamental integrity violation.
+**Detector-parameter and min-price disclosures — special attention at Gate 0→A1 and A1→A2:** If Part 1 discloses that the detector parameters (ATR multiple, trailing-stop scales, percentile-significance cutoff) or the data-validity min-price were examined before the pre-committed method was documented, this is an automatic CRITICAL finding — pre-spec examination of their effects on the move population is a fundamental integrity violation.
 
 ---
 
 ### TWO TYPES OF CONTAMINATION
 
 **Type 1 — Analytical Confirmation Bias:**
-- ATR threshold chosen to produce a particular number or type of moves rather than by pre-committed neutral method
-- Liquidity floor adjusted after observing its effect on the move population or on cluster characteristics
+- Detector parameters (ATR multiple, trailing-stop scales, percentile-significance cutoff) chosen to produce a particular number or type of moves rather than by pre-committed neutral method
+- Data-validity min-price threshold adjusted after observing its effect on the move population
+- An ADV/liquidity gate quietly re-introduced into universe eligibility (the floor was removed by design; capacity belongs at deployment)
 - Number of clusters or cluster boundaries adjusted after seeing initial cluster results
 - Cluster labels assigned that reference expected outcomes or known frameworks rather than being purely descriptive
 - Features named in ways implying expected outcomes
@@ -681,8 +684,8 @@ Same completeness requirements as Auditors 1–3, including pre-spec exploration
 
 **Universe construction parameters (Gate 0→A1):**
 1. Does the choice of index (S&P 1500, Russell 3000, or other) for the quality filter appear neutral and pre-committed, or does it appear selected to include/exclude specific stock types the analyst expected to matter?
-2. Does the liquidity floor discovery method appear genuinely empirical, or does the discovered floor suspiciously align with a round number or a known industry convention?
-3. Is there any evidence the liquidity floor was adjusted after observing how it affected the move population?
+2. Is liquidity genuinely kept out of the eligibility gate (recorded as a feature, with capacity deferred to deployment), or has an ADV/liquidity threshold crept back into universe construction?
+3. Does the data-validity min-price (~$1) appear to be a genuine data-quality boundary, or does it look chosen to shape which stocks/moves enter the study?
 
 **ATR threshold and move detection (Gate A1→A2):**
 4. Does the ATR threshold appear to have been chosen by neutral pre-committed method, or does it appear calibrated to produce a particular number of moves or a particular type of move population?
@@ -750,7 +753,7 @@ If no findings: state explicitly what was examined and that no indicators were d
 
 **SECTION 3: ITEMS REQUIRING HUMAN JUDGMENT**
 Specific questions for Scott — concrete, not generic. Examples of the right level of specificity:
-- "The liquidity floor discovered for 2010–present is $X. Is this number suspiciously close to a threshold you had in mind before the discovery method was run?"
+- "The percentile-significance cutoff for 'significant move' is the Pth percentile. Is P suspiciously close to a level you had in mind before the move distribution was examined?"
 - "The clustering produced N clusters. Did you have a prior expectation of how many clusters there would be? Does N match that expectation?"
 - "The feature named X uses a Y-day lookback — is this window chosen for a neutral reason, or does it match a known indicator specification you are aware of?"
 - "The highest-magnitude cluster contains Z moves. Does Z feel like the right order of magnitude, or does it feel suspiciously small or large relative to what you expected?"
@@ -760,8 +763,8 @@ State explicitly what this agent cannot reliably detect **at this specific gate*
 
 | Gate | Primary limitations to disclose |
 |---|---|
-| 0→A1 | Universe construction bias: I cannot detect whether the index chosen for the quality filter, or the discovery method for the liquidity floor, was selected because it produces a universe the analyst expected to be "right." Scott must ask himself: did I choose this index and this method before or after forming expectations about what the universe should look like? I also cannot verify whether the FMP/Norgate cross-validation resolved discrepancies in a direction that favored expected outcomes. |
-| A1→A2 | ATR threshold and clustering bias: I cannot detect whether the ATR threshold was informally tested against different values before being "pre-committed." I cannot detect whether the clustering algorithm was re-run with different parameters until it produced a result that felt right. I cannot assess whether the number of clusters produced matches Scott's prior expectations — that requires Scott's honest self-assessment. |
+| 0→A1 | Universe construction bias: I cannot detect whether the index chosen for the quality filter, or the data-validity min-price threshold, was selected because it produces a universe the analyst expected to be "right." Scott must ask himself: did I choose these before or after forming expectations about what the universe should look like? I also cannot verify whether the FMP/Norgate cross-validation resolved discrepancies in a direction that favored expected outcomes. |
+| A1→A2 | Detector-parameter and clustering bias: I cannot detect whether the detector parameters (ATR multiple, trailing-stop scales, percentile-significance cutoff) were informally tested against different values before being "pre-committed." I cannot detect whether the clustering algorithm was re-run with different parameters until it produced a result that felt right. I cannot assess whether the number of clusters produced matches Scott's prior expectations — that requires Scott's honest self-assessment. |
 | A2→A3 | Feature selection bias: I cannot detect whether the feature list, while appearing comprehensive, was informally shaped by prior knowledge of which features are known to matter in growth investing. The lookback windows are particularly difficult to audit — I cannot tell whether a 50-day or 65-day window was chosen empirically or because it matches a known indicator. |
 | A3→A4 | Narrative bias and novelty: I cannot detect whether the findings document emphasizes results that confirm prior beliefs and minimizes contradictory findings if both are present in the raw outputs. I also cannot assess whether a finding that appears novel to me is actually novel given Scott's existing knowledge of growth investing frameworks — that judgment requires Scott's honest self-assessment. |
 | A4→B1 | Framing bias: I cannot detect subtle framing in how findings are positioned relative to known frameworks in the comparison document. |
@@ -793,7 +796,7 @@ After reading the Agent Report, Scott reviews the planning document directly usi
 
 **SECTION A — Universe Construction and Parameter Integrity (Gate 0→A1)**
 
-☐ Look at the discovered liquidity floor values by year. Do they feel suspiciously close to a number you had in mind before the discovery method ran?
+☐ Confirm liquidity is NOT gating eligibility (recorded as a feature; capacity at deployment). Did any ADV/liquidity threshold creep back into the universe? Does the data-validity min-price feel like a genuine data-quality boundary, or a number you had in mind to shape the universe?
 ☐ Look at the index used for the quality filter. Did you choose this index before or after forming expectations about what the eligible universe should look like?
 ☐ Is the eligible universe size after both filters consistent with your expectations? If so, ask yourself: did your expectations shape the parameter choices, or did the parameters independently produce this result?
 
@@ -881,8 +884,8 @@ Before writing this specification, were any exploratory queries, data examinatio
 > **Note:** Any disclosure here is automatically routed to Auditor 4 as a finding requiring assessment.
 
 **Special disclosure for Gate 0→A1 and A1→A2:**
-> ☐ The ATR threshold value was not examined for its effect on the move population before the threshold specification was committed to GitHub.
-> ☐ The liquidity floor values were not examined for their effect on the eligible universe before the discovery method was committed to GitHub.
+> ☐ The detector parameters (ATR multiple, trailing-stop scales, percentile-significance cutoff) were not examined for their effect on the move population before the detector specification was committed to GitHub.
+> ☐ The data-validity min-price threshold was not examined for its effect on the eligible universe before it was committed to GitHub; and no ADV/liquidity gate was introduced into eligibility.
 > ☐ The number of clusters was not pre-examined or pre-specified before the clustering algorithm was run.
 >
 > If any of the above cannot be checked, describe what was known before commitment:
@@ -1328,9 +1331,22 @@ V7.0 adds feature-selection contamination control. The "no framework consultatio
 
 **Change T — Generic/auto feature-bank coverage (Auditor 4 §28).** Tagging is diagnostic, not preventive; it only bites if practitioner features actually compete against a generic/auto bank (entropy, autocorrelation structure, distributional moments, Hurst, etc.). Auditor 4 verifies the bank is present and non-trivial; an almost-entirely-practitioner catalog leaves the contamination risk unmitigated and is flagged.
 
-**Note — move detector unchanged.** Independent review (and our own multi-agent code review) found the price/volatility-only, MA-prohibited, confirmation-not-prediction, labels-separated-from-features detector clean; no V7 change.
+**Note (V7) — move detector unchanged.** Independent review found the price/volatility-only, MA-prohibited, confirmation-not-prediction, labels-separated-from-features detector clean; no V7 change. *(Superseded in V8 — see Appendix D, Change W: the detector was subsequently redesigned to be threshold-free and multi-scale.)*
+
+---
+---
+
+# APPENDIX D — VERSION 8.0 CHANGE LOG
+
+V8.0 reconciles the auditor framework with three design changes ratified after V7. All V4–V7 appendices are retained.
+
+**Change U — Liquidity floor removed as a universe gate.** The institutional ADV liquidity floor is no longer an eligibility filter. Eligibility = `index_member ∧ data_valid ∧ above_min_price (~$1) ∧ 252-day history`. Liquidity (ADV, dollar volume, market cap, price) is a **recorded feature** so A3 can discover whether it governs move success; tradeability/capacity is applied at the **deployment/scoring layer**, not during discovery. *Rationale:* an early liquidity gate forecloses discovering liquidity's role — the same discovery-first error as a move-size detection floor. All Auditor 1/2/4 "two-layer / ADV floor / liquidity_floors-populated" checks were rewritten to: confirm ADV does NOT gate `eligible`; verify the data-validity screen (actually-traded volume, clean prices, ~$1 penny-spread floor) and the "moves only on actually-traded bars" anti-pollution rule; and confirm capacity is deferred to deployment. The min-price threshold replaces the floor as the relevant pre-commitment/tuning risk point.
+
+**Change V — Clustering on uncensored smoothness, not raw drawdown.** The third clustering dimension is an uncensored smoothness/path-efficiency metric (with magnitude and duration). Raw intra-move drawdown is retained as a comparative/diagnostic input only, because it is mechanically censored by the move-end rule — clustering on it would partly cluster on a detector parameter. All "three dimensions: magnitude, duration, intra-move drawdown" references updated.
+
+**Change W — Threshold-free, multi-scale MFE detector is canonical.** The move detector no longer applies a hardcoded confirmation/size floor. Every local low seeds a candidate move; magnitude is measured into a continuous distribution; "significant" is defined by a **percentile** of that distribution, not a fixed cutoff. The detector runs at multiple trailing-stop scales (short swing legs through long arcs), tolerates and records early drawdown (MAE), and ends a move at a volatility-scaled trailing stop from its peak (not a round-trip). The ATR-swing detector is retained only as a cross-check baseline; an absolute-return detector provides a volatility-independent cross-check. The "Type 1 contamination" and pre-commitment risk points were retargeted from "ATR threshold + liquidity floor" to "detector parameters (ATR multiple, trailing-stop scales, percentile cutoff) + data-validity min-price," and a new Type-1 item flags any ADV/liquidity gate quietly re-introduced into eligibility.
 
 ---
 
-*Scott Oman · Kaizen Alpha Research · June 2026 · Version 7.0*
+*Scott Oman · Kaizen Alpha Research · June 2026 · Version 8.0*
 *Pre-implementation framework — no analytical work has begun*
