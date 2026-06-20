@@ -15,6 +15,20 @@ Entry format:
 
 ---
 
+## 2026-06-20 — Pre-implementation
+**Event type:** DECISION
+**Auditor or trigger:** External critique (ChatGPT) on target non-stationarity + Scott reframe
+**Finding:** The dominant risk is conceptual, not execution: a "great winner setup" may not be a stable, universal phenomenon across regimes. Prior rounds hardened execution (detector, liquidity, PIT) but left this premise untested.
+**Remediation / decisions:**
+- Make **regime a first-class discovery axis**: discover the move taxonomy per environment, characterize how it morphs, and build a regime-analogy engine ("what past regime are we in; what worked then?"). Non-stationarity becomes the subject, not the failure mode.
+- Adopt the **emotional-invariance hypothesis** as the study's central, *testable* thesis: behavioral/emotional features (contraction, shakeout depth/timing, volume, smoothness, RS persistence) should transfer across regimes; structural features (price levels, fundamentals magnitude, sector, duration) should not. Held as a hypothesis, confirmed/denied by the transfer-test — discovery-first discipline applies to it.
+- Adopt regime-relative feature normalization and (continuous) regime-analogy similarity.
+- Add seven pre-committed early go/no-go experiments (run on the real-data pilot BEFORE full compute): target-stationarity transfer test (emotional vs structural), trough-vs-breakout move-anchor sensitivity, universe-definition sensitivity, multiple significance definitions, multiple control constructions, continuous-vs-discrete characterization as co-equal, and a true lockbox period.
+- Snowball-risk register reordered: **target non-stationarity** and **trough-vs-breakout anchoring** elevated above Norgate membership accuracy. Deep-history (Norgate 1950–2009) is now load-bearing for the regime thesis.
+- Process: this is the LAST synthetic-stage critique round; the real validator is the data run. Captured in `research/regime_conditional_discovery.md`.
+**Resolution:** Captured as design decision; folds into Phase A1/A3 pre-commit when reached. No code/data work triggered.
+**Scott sign-off:** agreed 2026-06-20
+
 ## 2026-06-19 — Pre-implementation
 **Event type:** DECISION
 **Auditor or trigger:** Planning session (implementation blueprint)
