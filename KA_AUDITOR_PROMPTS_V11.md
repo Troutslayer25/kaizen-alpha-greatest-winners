@@ -3,6 +3,8 @@
 ### Phase-Gate Audit Framework
 **Author:** Scott Oman · Kaizen Alpha Research
 **Date:** June 2026
+**Version:** 11.0 — Builds on V10.0. Adds a validation architecture that treats the target, universe, and control design as first-class objects of validation (not fixed infrastructure): **"validate the definition of the thing being modeled, not just the model."** Specifically: (1) one new hard gate, **Gate 0.5 — real-data pilot sanity** (break the pipeline on 100–300 tickers before full-universe compute); (2) required sensitivity *analyses folded into the existing gates* (target stability, universe sensitivity, control-design sensitivity, research-path multiple-testing, economic viability) — NOT new gates, to avoid bureaucratic proliferation; (3) a **negative-control harness** (the pipeline must find nothing in shuffled/permuted/misaligned data); (4) **research-path / family-level FDR + deflated Sharpe**; (5) a **marginal-sensitivity discipline** — design axes are varied one-at-a-time against pre-committed defaults, never as a full grid, so the sensitivity studies don't themselves explode the search space. See Appendix G.
+
 **Version:** 10.0 — Builds on V9.0. Adds hardening from a further methodology review: (1) an **adversarial synthetic-oracle regime** (flash crashes, volume spikes, false-breakout bottoms, obscured signal) stress-tests detection and A3 signal-recovery beyond the clean-oracle localization tests; (2) **early-drama clustering dimensions** (`early_smoothness`, `drawdown_timing`) so a violent early shakeout is not merged with a calm grind of identical overall smoothness — uncensored by the trailing-stop parameter — plus a shakeout-segmented continuous fallback; (3) an **A3 collinearity/VIF diagnostic** + a design preference for non-price (credit/macro) regime factors, so near-duplicate feature/regime pairs are surfaced and attribution stays honest; (4) **risk-tiered gates** — data-integrity gates are hard stops, methodology/cosmetic gates run asynchronously (diff-based + automated tier). **Speculative execution of discovery work on un-cleared features is explicitly DECLINED** — premature visibility of A3 results is a worse cost than idle compute in a discovery-first study. See Appendix F.
 
 **Version:** 9.0 — Builds on V8.0. Adds four refinements from external methodology review, all aimed at removing residual subjectivity: (1) a programmatic tiebreaker for *marginal* cluster-stability results (the math, not the analyst, chooses discrete clusters vs. the continuous-spectrum fallback — `resolve_representation`); (2) **blind economic-mechanism review** — the bias auditor votes on a mechanism's logic without seeing the return profile it generated — plus an optional falsifiable-auxiliary-prediction elevator; (3) a **calibration-decay monitor** so a calibration transform can't cosmetically mask degrading discrimination; (4) a formal **automated-gate tier + diff-based audit** so deterministic checks run autonomously and gates review only what changed — without weakening any auditor's independent veto. See Appendix E.
@@ -24,6 +26,7 @@
 | 8.0 | Reconciled with three ratified design changes. (1) **Liquidity floor removed as a universe gate** — eligibility = index_member ∧ data_valid ∧ above_min_price ($1) ∧ 252-day history; liquidity recorded as a feature, capacity applied at deployment. All Auditor 1/2/4 "two-layer / ADV floor" checks retargeted: verify ADV does NOT gate eligibility; verify the data-validity screen + "moves on actually-traded bars" anti-pollution rule; pre-commitment checks retargeted to the ATR/percentile detector parameters. (2) **MFE detector canonical** — continuous population, percentile significance (no hardcoded size cutoff), ATR-swing is a cross-check baseline. (3) **Clustering on magnitude/duration/smoothness** — raw drawdown comparative/diagnostic only. See Appendix D. |
 | 9.0 | Four residual-subjectivity refinements (external methodology review). (1) Programmatic tiebreaker for marginal cluster stability (`resolve_representation`) — no human call between discrete clusters and the continuous fallback. (2) Blind economic-mechanism review (vote on logic, not on the return profile) + optional falsifiable-auxiliary-prediction elevator (Auditor 4). (3) Calibration-decay monitor — alarm on weak discrimination so calibration can't mask it (Auditor 3). (4) Automated-gate tier + diff-based audit — deterministic checks run as autonomous unit tests; gates review only the diff since the last pass; independence/veto unchanged. See Appendix E. |
 | 10.0 | Robustness hardening (methodology review). (1) Adversarial synthetic-oracle regime (flash crashes, volume spikes, false-breakout bottoms, obscured signal) — detection + A3 signal-recovery stress test beyond the clean-oracle localization tests. (2) Early-drama clustering dimensions (`early_smoothness`, `drawdown_timing`, uncensored by the trailing stop) + shakeout-segmented continuous fallback, so a violent early shakeout is not merged with a calm grind. (3) A3 collinearity/VIF diagnostic + non-price-regime preference, so near-duplicate feature/regime pairs are surfaced. (4) Risk-tiered gates (data-integrity = hard stop; methodology/cosmetic = async diff-based). Speculative discovery execution on un-cleared features DECLINED on bias grounds. See Appendix F. |
+| 11.0 | Validation architecture: validate the *definition* (target/universe/control), not only the model. (1) New hard **Gate 0.5 — real-data pilot sanity** before full-universe compute. (2) Required sensitivity analyses folded into EXISTING gates (target stability, universe, control-design, research-path FDR, economic viability) — deliberately NOT five new gates, to avoid the paralysis the review itself warned of. (3) Negative-control harness (find nothing in shuffled/permuted/misaligned data). (4) Research-path / family-level FDR + deflated Sharpe. (5) Marginal-sensitivity discipline: vary one design axis at a time vs. pre-committed defaults, never a grid. See Appendix G. |
 
 ---
 
@@ -118,6 +121,7 @@ Seven phase gates, each requiring all four auditors to issue CLEAR:
 | Gate | Transition | Notes |
 |---|---|---|
 | Gate 0→A1 | Universe construction and data audit complete | Data-validity screen reviewed (ADV does NOT gate eligibility; liquidity recorded as a feature). Completeness audit reviewed. Index constituent PIT verified. |
+| Gate 0.5 (hard) | Real-data pilot sanity (100–300 tickers) before full-universe compute | Break-the-pipeline checklist: no phantom moves; PIT joins + `available_date` manually validated; delisted retained; detector outputs eyeballed; negative-control harness passes; label base rates plausible. |
 | Gate A1→A2 | Move population mapped and clusters discovered | Clustering procedure verified. Labels confirmed post-hoc. ATR threshold pre-commitment verified. |
 | Gate A2→A3 | All feature extraction complete | Lineage summary required. Feature branch availability by window verified. |
 | Gate A3→A4 | Statistical discovery complete | **Most critical gate. Lineage summary required. Auditor 4 maximum scrutiny.** |
@@ -1385,6 +1389,57 @@ V10.0 adds robustness hardening from a further methodology review. All earlier a
 **Change EE — Risk-tiered gates; speculative discovery execution declined.** Gates are tiered by risk: **data-integrity gates** (no future leak, PIT correctness) are HARD STOPS; **methodology/cosmetic gates** (e.g. a feature-tagging issue) run ASYNCHRONOUSLY via the automated tier + diff-based audit (Change AA). This keeps momentum without weakening any veto. **Speculative execution of discovery work on un-cleared features is explicitly DECLINED:** the proposal to begin A3 compute on a preliminary feature matrix while auditors review trades idle-compute cost for a worse cost — premature visibility of A3 results, which cannot be un-seen and is exactly the contamination the discovery-first framework prevents. In this study, idle GPUs are cheap; a contaminated discovery is not. Gates are infrequent (7 total), so the efficiency argument does not outweigh the bias risk.
 
 ---
+---
 
-*Scott Oman · Kaizen Alpha Research · June 2026 · Version 10.0*
+# APPENDIX G — VERSION 11.0 CHANGE LOG
+
+V11.0 adds a validation architecture: the target, universe, and control design are made
+first-class objects of validation rather than fixed infrastructure. Governing principle:
+*validate the definition of the thing being modeled, not only the model.* All earlier
+appendices retained.
+
+**Change FF — Gate 0.5 (real-data pilot sanity), a new HARD gate.** Before any full-universe
+detection, run a deliberately small real-data pilot (100–300 tickers across sectors,
+including delisted names, crisis periods, split-heavy and low-liquidity index names, and
+known winners + failed lookalikes). The goal is not discovery — it is to *break the
+pipeline*. Pilot acceptance checklist: no phantom moves; PIT joins manually validated;
+delisted names retained; `available_date` logic inspected on real filings; detector outputs
+visually reviewed; control pools adequate; label base rates plausible; feature distributions
+sane. This front-loads the snowball-risk catches (Norgate membership, data-quality, PIT)
+before expensive compute. Inserted between Phase 0 and Phase A1.
+
+**Change GG — Required sensitivity analyses folded into EXISTING gates (not new gates).** The
+review proposed five new gates; that would create the bureaucratic paralysis the same review
+warned against. Instead these become required deliverables of the gates that already exist:
+target-stability + universe-sensitivity at Gate A1→A2; control-design sensitivity at
+A2→A3; research-path multiple-testing at A3→A4; economic viability at B2→B3. Same rigor,
+no gate proliferation.
+
+**Change HH — Negative-control harness (`gws/common/negative_controls.py`).** The mirror of
+the synthetic oracle: the pipeline must find NOTHING in shuffled labels, features permuted
+within date, and misaligned labels. A control scoring above chance signals leakage or a
+broken evaluation. Auditor 1/3 require the negative-control report at the pilot and at A3.
+
+**Change II — Research-path / family-level multiple-testing (`gws/phase_a3/research_path.py`).**
+Feature-level BH-FDR undercounts the true search space. Hierarchical FDR requires a feature
+FAMILY to clear family-level correction (Simes) before its members are inspected; deflated
+Sharpe / expected-max-Sharpe haircuts strategy outputs for the number of variants tried. A
+Tier-1 finding must survive family-level correction, not only feature-level. Auditor 3.
+
+**Change JJ — Marginal-sensitivity discipline (critical constraint).** The sensitivity studies
+(multiple targets, controls, universes, characterizations) themselves multiply the search
+space — fighting the very FDR control of Change II. Therefore every design axis is varied
+ONE AT A TIME against pre-committed defaults, never as a full crossed grid. Multi-target is
+a *primary target + robustness labels*, not co-equal multi-target discovery. Auditor 2/3
+verify no full-grid search was run and that defaults were pre-committed.
+
+**Change KK — Economic validation before model selection.** Model selection requires more than
+AUC/Brier: top-decile excess return, turnover, slippage sensitivity, capacity, sector
+concentration, drawdown profile, hit-rate by regime, holding period, capital per unit of
+edge. A slightly-lower-AUC model with better economic behavior may win. Extends the existing
+capacity/decile-lift tooling; reviewed at B2→B3.
+
+---
+
+*Scott Oman · Kaizen Alpha Research · June 2026 · Version 11.0*
 *Pre-implementation framework — no analytical work has begun*

@@ -15,6 +15,20 @@ Entry format:
 
 ---
 
+## 2026-06-20 — Pre-implementation (validation architecture)
+**Event type:** DECISION
+**Auditor or trigger:** External critique (ChatGPT) — concrete method proposals; Scott approved the triaged subset
+**Finding:** Treat the target, universe, and control design as first-class objects of validation, not fixed infrastructure ("validate the definition, not just the model"). The full proposal (12 methods + 5 new gates) would, taken whole, be the analysis-paralysis machine the same review warned against.
+**Remediation / decisions (triaged subset, all approved):**
+- BUILT now: negative-control harness (`gws/common/negative_controls.py`) + research-path/family-FDR + deflated Sharpe (`gws/phase_a3/research_path.py`), with tests (104 total pass).
+- ONE new hard gate: **Gate 0.5 — real-data pilot sanity** (break the pipeline on 100–300 tickers before full compute). The other proposed gates (A1.5/A2.5/A3.5/X.5) folded into existing gates as required analyses — NOT new gates.
+- **Marginal-sensitivity discipline** (critical): vary one design axis at a time vs pre-committed defaults, never a full grid; multi-target = primary + robustness labels, not co-equal discovery. This prevents the sensitivity studies from exploding the search space that family-FDR then has to correct.
+- Deferred to phase: economic-validation metrics (Phase X/B2), post-discovery decay monitoring (B-phase), independent mechanism test (extends blind review).
+- Pushed back on / declined: 5-new-gate proliferation; co-equal multi-target discovery (6x compute + DoF); hard-gate on mechanism auxiliary predictions (kept strong-preference).
+- Auditor framework V10 → V11 (Appendix G; Gate 0.5 added to the gate table).
+**Resolution:** FINAL design pass. Further weaknesses handled on the fly. Consolidated final master document issued for one last external review.
+**Scott sign-off:** approved 2026-06-20
+
 ## 2026-06-20 — Pre-implementation
 **Event type:** DECISION
 **Auditor or trigger:** External critique (ChatGPT) on target non-stationarity + Scott reframe
