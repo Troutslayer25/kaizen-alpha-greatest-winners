@@ -2,7 +2,7 @@ import numpy as np
 
 from gws.phase_a1.clustering import (
     zscore, variation_of_information, cluster_stability, make_kmeans, make_hdbscan,
-    resolve_representation,
+    resolve_representation, segment_by_early_drama,
 )
 
 
@@ -78,3 +78,11 @@ def test_resolve_representation_marginal_is_decided_by_math():
     assert r["representation"] in ("discrete", "continuous")
     if r["verdict"] == "marginal":
         assert r["discrete_var"] is not None and r["continuous_var"] is not None
+
+
+def test_segment_by_early_drama_splits_bands():
+    labels = np.array(["band0", "band0", "band1", "band1"])
+    shakeout = np.array([True, False, True, False])
+    out = segment_by_early_drama(labels, shakeout)
+    assert list(out) == ["band0|shakeout", "band0|ascent", "band1|shakeout", "band1|ascent"]
+    assert len(set(out)) == 4                  # four distinct behavioral subsets

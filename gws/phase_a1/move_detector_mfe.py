@@ -24,6 +24,14 @@ Design, in response to the "2.5-ATR move is invisible" critique of the ATR-swing
 `trail_atr` is the one dial (the scale). It is ATR-scaled (no fixed-% bias) and is meant to
 be pre-committed and swept. The peak/forward travel defines move boundaries only — never
 features (Phase A2 extracts features as of the trough).
+
+Early-drama dimensions (`early_smoothness`, `drawdown_timing`): smoothness over the whole
+move cannot distinguish a violent early shakeout from a calm grind of identical overall
+smoothness. These two describe the realized path SHAPE (not the drawdown DEPTH, which the
+trailing stop bounds — i.e. they are uncensored by trail_atr) so clustering can separate
+"panic at the start" from "complacent ascent". They are available as comparative clustering
+inputs (run alongside the magnitude/duration/smoothness baseline; they are NOT detection
+gates — the detector still finds the move without them).
 """
 from __future__ import annotations
 
@@ -42,9 +50,18 @@ class MoveMFE:
     duration_days: int        # peak_idx - trough_idx
     mae: float                # max adverse excursion below the start (fraction >= 0), recorded
     smoothness: float         # net / sum|daily change| in [0,1]; low = wild path
+    early_smoothness: float   # smoothness over the first third of the move (early-drama, uncensored)
+    drawdown_timing: float    # location of the deepest from-peak drawdown within the move, in [0,1]
+                              #   (0 = early "shakeout" drama, 1 = late wobble)
     trail_atr: float          # the scale this move was detected at
     scale: str
     is_open: bool
+
+
+def _path_smoothness(seg) -> float:
+    net = seg[-1] - seg[0]
+    path = float(np.abs(np.diff(seg)).sum())
+    return float(net / path) if path > 0 else 0.0
 
 
 def _record(close, trough_idx, peak_idx, trail_atr, scale, is_open) -> MoveMFE:
@@ -52,14 +69,20 @@ def _record(close, trough_idx, peak_idx, trail_atr, scale, is_open) -> MoveMFE:
     s = seg[0]
     pk = close[peak_idx]
     mae = float(max(0.0, (s - seg.min()) / s)) if s > 0 else float("nan")
-    net = pk - s
-    path = float(np.abs(np.diff(seg)).sum())
-    smoothness = net / path if path > 0 else 0.0
+    smoothness = _path_smoothness(seg)
+    # Early-drama dimensions (uncensored by trail_atr — they describe the realized path
+    # shape, not the drawdown DEPTH that the trailing stop bounds). These let clustering
+    # distinguish a violent early shakeout from a calm grind of identical overall smoothness.
+    third = max(2, len(seg) // 3)
+    early_smoothness = _path_smoothness(seg[:third])
+    running_peak = np.maximum.accumulate(seg)
+    dd = np.where(running_peak > 0, (running_peak - seg) / running_peak, 0.0)
+    drawdown_timing = float(np.argmax(dd) / (len(seg) - 1)) if len(seg) > 1 and dd.max() > 0 else 0.0
     return MoveMFE(
         trough_idx=int(trough_idx), peak_idx=int(peak_idx),
         magnitude=float(pk / s - 1.0), duration_days=int(peak_idx - trough_idx),
-        mae=mae, smoothness=float(smoothness), trail_atr=float(trail_atr),
-        scale=scale, is_open=is_open,
+        mae=mae, smoothness=float(smoothness), early_smoothness=early_smoothness,
+        drawdown_timing=drawdown_timing, trail_atr=float(trail_atr), scale=scale, is_open=is_open,
     )
 
 

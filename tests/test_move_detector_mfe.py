@@ -62,6 +62,21 @@ def test_early_shakeout_stays_one_move_and_records_mae():
     assert 0.45 <= moves[0].magnitude <= 0.55
 
 
+def test_early_drama_dimensions_separate_shakeout_from_grind():
+    # Two moves, same net magnitude: one calm grind, one with a violent EARLY shakeout.
+    # Overall smoothness may be similar; the early-drama dims must differ.
+    grind = np.concatenate([np.full(20, 100.0), np.linspace(100, 160, 60)])
+    hg, lg, cg = _ohlc(grind)
+    shake = np.concatenate([np.full(20, 100.0), np.linspace(100, 101, 3),
+                            np.linspace(101, 90, 6), np.linspace(90, 160, 55)])
+    hs, ls, cs = _ohlc(shake)
+    mg = detect_moves_mfe(hg, lg, cg, trail_atr=12.0)[0]
+    ms = detect_moves_mfe(hs, ls, cs, trail_atr=12.0)[0]
+    assert ms.mae > 0.05 and mg.mae < 0.02                  # shakeout dipped below start; grind didn't
+    assert ms.early_smoothness < mg.early_smoothness        # early path rougher for the shakeout
+    assert ms.drawdown_timing < 0.5                         # its deepest drawdown is early
+
+
 def test_multiscale_returns_a_population_per_scale():
     hw, lw, c_wild = _ohlc(_wild_winner())
     res = detect_moves_multiscale(hw, lw, c_wild, scales=(2.0, 6.0, 15.0))

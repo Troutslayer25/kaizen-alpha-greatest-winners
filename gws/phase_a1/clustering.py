@@ -122,3 +122,16 @@ def _mean_within_group_var(values, groups) -> float:
     groups = np.asarray(groups)
     vs = [values[groups == g].var() for g in np.unique(groups) if g != -1 and (groups == g).sum() > 1]
     return float(np.mean(vs)) if vs else float("inf")
+
+
+def segment_by_early_drama(labels, had_early_shakeout) -> np.ndarray:
+    """Split each (cluster or quantile-band) label into early-shakeout vs immediate-ascender
+    sub-labels (critique keeper). Used with the continuous-spectrum fallback so distinct
+    behavioral subsets (panic-then-rally vs calm grind) are not forced onto a generic
+    magnitude/smoothness band. `had_early_shakeout` is a boolean per move (e.g. drawdown_timing
+    in the early third AND mae above a small floor); the detector stays neutral — this only
+    organizes already-detected moves. Returns string sub-labels '<label>|shakeout' / '|ascent'.
+    """
+    labels = np.asarray(labels)
+    flag = np.asarray(had_early_shakeout, bool)
+    return np.array([f"{lab}|{'shakeout' if f else 'ascent'}" for lab, f in zip(labels, flag)])

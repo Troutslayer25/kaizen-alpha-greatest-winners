@@ -76,9 +76,10 @@ CREATE INDEX IF NOT EXISTS ix_observations_tickerdate ON gws.observations (ticke
 --
 -- PERSISTENCE CONTRACT (the detectors return ticker-agnostic, index-keyed dataclasses;
 -- the Phase-A1 writer performs this mapping — see move_detector_mfe.MoveMFE):
---   MoveMFE.magnitude   -> total_pct_gain      MoveMFE.smoothness -> smoothness_metric
---   MoveMFE.mae         -> mae                 MoveMFE.trail_atr  -> trail_atr
---   MoveMFE.scale       -> scale               MoveMFE.is_open    -> is_open
+--   MoveMFE.magnitude   -> total_pct_gain      MoveMFE.smoothness       -> smoothness_metric
+--   MoveMFE.mae         -> mae                 MoveMFE.early_smoothness -> early_smoothness
+--   MoveMFE.scale       -> scale               MoveMFE.drawdown_timing  -> drawdown_timing
+--   MoveMFE.trail_atr   -> trail_atr           MoveMFE.is_open          -> is_open
 --   trough_idx/peak_idx -> start_date/peak_date (writer maps bar index -> calendar date)
 --   writer also attaches ticker_id, sets detection_system, and sets is_primary_scale
 --   (TRUE only for the pre-committed primary scale).
@@ -91,6 +92,8 @@ CREATE TABLE IF NOT EXISTS gws.moves (
   total_pct_gain     NUMERIC NOT NULL,       -- clustering dim 1: magnitude  (MoveMFE.magnitude)
   duration_days      INTEGER NOT NULL,       -- clustering dim 2: duration
   smoothness_metric  NUMERIC,                -- clustering dim 3 (uncensored): path efficiency
+  early_smoothness   NUMERIC,                -- comparative dim: smoothness of the first third (early drama)
+  drawdown_timing    NUMERIC,                -- comparative dim: location of deepest drawdown in [0,1] (0=early shakeout)
   mae                NUMERIC,                -- max adverse excursion below start (recorded, not gated)
   max_intra_drawdown NUMERIC,                -- diagnostic/comparative (drawdown from running peak)
   detection_system   TEXT    NOT NULL,       -- 'mfe' (canonical) | 'atr_swing' | 'absolute_return' (cross-check)
