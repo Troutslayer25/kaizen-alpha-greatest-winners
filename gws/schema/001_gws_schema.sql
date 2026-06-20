@@ -23,7 +23,10 @@ CREATE TABLE IF NOT EXISTS gws.index_membership (
 );
 CREATE INDEX IF NOT EXISTS ix_index_membership_ticker ON gws.index_membership (ticker_id, from_date);
 
--- Empirically discovered liquidity floors, per period.
+-- Liquidity-tier reference (v2: NOT a universe gate). The ADV floor was removed from
+-- universe construction; liquidity is carried as a feature and capacity is applied at the
+-- deployment layer. This table is retained only for optional liquidity-tier / capacity
+-- bucketing (knee-of-curve utility) — never to gate gws.universe_eligibility.
 CREATE TABLE IF NOT EXISTS gws.liquidity_floors (
   period_label      TEXT    NOT NULL,       -- '1950_2009' | '2010_present'
   year              INTEGER NOT NULL,
@@ -33,17 +36,19 @@ CREATE TABLE IF NOT EXISTS gws.liquidity_floors (
   PRIMARY KEY (period_label, year)
 );
 
--- Two-layer time-varying eligibility flag (single source of truth downstream).
+-- Time-varying eligibility flag (single source of truth downstream).
+-- v2: eligible = index_member AND data_valid AND above_min_price AND 252-day history.
+-- NO institutional ADV liquidity gate — liquidity is a recorded feature, not a filter.
 CREATE TABLE IF NOT EXISTS gws.universe_eligibility (
   ticker_id          INTEGER NOT NULL,
   date               DATE    NOT NULL,
   eligible           BOOLEAN NOT NULL,
-  index_member       BOOLEAN NOT NULL,      -- Layer 1: quality filter
+  index_member       BOOLEAN NOT NULL,      -- Layer 1: quality filter (index membership)
   index_list         TEXT,                   -- which index(es) on this date
-  above_price_floor  BOOLEAN NOT NULL,      -- Layer 2a: penny-stock exclusion
-  above_adv_floor    BOOLEAN NOT NULL,      -- Layer 2b: liquidity filter
-  adv_50d            NUMERIC,
-  adv_floor          NUMERIC,
+  data_valid         BOOLEAN NOT NULL,      -- Layer 2: minimal data-validity screen (real volume, clean data)
+  above_min_price    BOOLEAN NOT NULL,      -- data-validity price floor (~$1; penny-spread artifact guard)
+  adv_50d            NUMERIC,               -- recorded liquidity metric — FEATURE, not a gate
+  dollar_volume_50d  NUMERIC,               -- recorded — FEATURE, not a gate
   PRIMARY KEY (ticker_id, date)
 );
 
