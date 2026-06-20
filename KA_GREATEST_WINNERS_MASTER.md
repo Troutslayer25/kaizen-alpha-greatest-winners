@@ -270,6 +270,13 @@ regime-conditioned + entry-point analysis; scoring/Pass-B assembly; all real-dat
 Gate 0.5 pilot (with the early experiments §12 as the first true test of the regime/invariance
 thesis) → full pipeline under the gates.
 
+**Gate 0.5 exit artifact (required, per final external review):** a written go/no-go memo
+answering *"Is the study learning a transferable winner setup, or merely rediscovering
+regime-specific historical artifacts?"* — evidenced by the transfer/stationarity experiment
+(§12.1) run on the pilot. Scott signs this memo before any full-universe compute. This is the
+single most important checkpoint in the study: it decides whether universal discovery is
+viable or whether the work must proceed regime-conditionally.
+
 ---
 
 *Kaizen Alpha Research · Greatest Winners Study · master design (auditor framework V11). The

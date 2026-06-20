@@ -121,7 +121,7 @@ Seven phase gates, each requiring all four auditors to issue CLEAR:
 | Gate | Transition | Notes |
 |---|---|---|
 | Gate 0→A1 | Universe construction and data audit complete | Data-validity screen reviewed (ADV does NOT gate eligibility; liquidity recorded as a feature). Completeness audit reviewed. Index constituent PIT verified. |
-| Gate 0.5 (hard) | Real-data pilot sanity (100–300 tickers) before full-universe compute | Break-the-pipeline checklist: no phantom moves; PIT joins + `available_date` manually validated; delisted retained; detector outputs eyeballed; negative-control harness passes; label base rates plausible. |
+| Gate 0.5 (hard) | Real-data pilot sanity (100–300 tickers) before full-universe compute | Break-the-pipeline checklist: no phantom moves; PIT joins + `available_date` manually validated; delisted retained; detector outputs eyeballed; negative-control harness passes; label base rates plausible. **Required artifact: a written go/no-go memo answering — "Is the study learning a transferable winner setup, or merely rediscovering regime-specific historical artifacts?"** (the transfer/stationarity test §12.1 is the evidence). Full-universe compute does not begin until Scott signs this memo. |
 | Gate A1→A2 | Move population mapped and clusters discovered | Clustering procedure verified. Labels confirmed post-hoc. ATR threshold pre-commitment verified. |
 | Gate A2→A3 | All feature extraction complete | Lineage summary required. Feature branch availability by window verified. |
 | Gate A3→A4 | Statistical discovery complete | **Most critical gate. Lineage summary required. Auditor 4 maximum scrutiny.** |
@@ -1406,7 +1406,12 @@ pipeline*. Pilot acceptance checklist: no phantom moves; PIT joins manually vali
 delisted names retained; `available_date` logic inspected on real filings; detector outputs
 visually reviewed; control pools adequate; label base rates plausible; feature distributions
 sane. This front-loads the snowball-risk catches (Norgate membership, data-quality, PIT)
-before expensive compute. Inserted between Phase 0 and Phase A1.
+before expensive compute. Inserted between Phase 0 and Phase A1. **Required exit artifact (per
+final external review):** a written go/no-go memo answering whether the study appears to be
+learning a *transferable* winner setup or merely rediscovering *regime-specific historical
+artifacts* — the transfer/stationarity experiment (§12.1) is the evidence, and Scott signs the
+memo before full-universe compute begins. This pins the pilot's acceptance criterion to the
+study's central thesis (emotional invariance / target stationarity).
 
 **Change GG — Required sensitivity analyses folded into EXISTING gates (not new gates).** The
 review proposed five new gates; that would create the bureaucratic paralysis the same review

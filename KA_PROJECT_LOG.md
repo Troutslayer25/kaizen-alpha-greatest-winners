@@ -15,6 +15,14 @@ Entry format:
 
 ---
 
+## 2026-06-20 — Design phase CLOSED
+**Event type:** DECISION
+**Auditor or trigger:** Final external institutional review (8.8 institutional research quality)
+**Finding:** Independent reviewer scored the design strong across all dimensions; every sub-9 score is an implementation/data-readiness gap, not a design gap. Verdict: "strong final design, I would not keep redesigning it — proceed to Norgate ingest → Phase 0 → Gate 0.5 pilot." Reviewer's risk list matched the §13 register independently. This is the exit signal agreed in the wind-down.
+**Remediation / decision:** Design phase declared CLOSED. Adopted the reviewer's single insisted item: Gate 0.5 must produce a signed written go/no-go memo answering "Is the study learning a transferable winner setup, or merely rediscovering regime-specific historical artifacts?" (transfer/stationarity test = evidence). Folded into the V11 Gate 0.5 spec + master doc. No further design rounds; remaining weaknesses handled on the fly during implementation.
+**Resolution:** CLEARED to proceed to data work (gated on FMP backfill + workstation).
+**Scott sign-off:** agreed 2026-06-20
+
 ## 2026-06-20 — Pre-implementation (validation architecture)
 **Event type:** DECISION
 **Auditor or trigger:** External critique (ChatGPT) — concrete method proposals; Scott approved the triaged subset
