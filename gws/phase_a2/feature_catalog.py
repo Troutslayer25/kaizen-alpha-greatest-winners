@@ -38,6 +38,14 @@ PRICE_VOLUME_MOTIVATION = {
     "rel_strength": "practitioner_derived",
 }
 
+# Generic/auto feature families (gws/phase_a2/generic_features.py). Listed here so a
+# generic feature is auto-detected as 'auto_generated' even if a caller forgets the
+# branch kwarg — it can never silently fall through to 'unclassified'.
+GENERIC_PREFIXES = frozenset({
+    "ret_autocorr1", "ret_skew", "ret_kurt", "zero_cross",
+    "perm_entropy", "hurst", "vol_autocorr1",
+})
+
 
 def _prefix(feature_name: str) -> str:
     """Strip a trailing _<lookback> / _<period> from a feature name to get its family."""
@@ -46,20 +54,29 @@ def _prefix(feature_name: str) -> str:
 
 
 def motivation_for(feature_name: str, *, branch: str = "price_volume") -> str:
-    """Return the motivation tag for a feature. Generic-bank features (branch
-    'generic') are 'auto_generated'; Branch-1 families map via the table above."""
-    if branch == "generic":
+    """Return the motivation tag for a feature. Generic-bank features are
+    'auto_generated' (by branch or by auto-detected prefix); Branch-1 families map via
+    the table above."""
+    pre = _prefix(feature_name)
+    if branch == "generic" or pre in GENERIC_PREFIXES:
         return "auto_generated"
-    return PRICE_VOLUME_MOTIVATION.get(_prefix(feature_name), "unclassified")
+    return PRICE_VOLUME_MOTIVATION.get(pre, "unclassified")
 
 
 def catalog_rows(feature_names, *, branch: str = "price_volume", formula_version: str = "v1"):
     """Build gws.feature_catalog rows (dicts) for a set of feature names, with motivation
-    tagged. Intended to be committed before any A3 result is examined."""
-    return [{
-        "feature_name": fn,
-        "branch": branch,
-        "formula_version": formula_version,
-        "motivation": motivation_for(fn, branch=branch),
-        "status": "active",
-    } for fn in feature_names]
+    tagged. Intended to be committed before any A3 result is examined.
+
+    Fail-closed: every emitted motivation must be a known tag. An 'unclassified' result
+    means a feature family was added without a motivation entry — that is a wiring error
+    and must be fixed at registration, not silently shipped."""
+    rows = []
+    for fn in feature_names:
+        m = motivation_for(fn, branch=branch)
+        if m not in MOTIVATIONS:
+            raise ValueError(
+                f"feature '{fn}' has motivation '{m}' — add it to PRICE_VOLUME_MOTIVATION "
+                f"or GENERIC_PREFIXES before cataloging (no unclassified features ship)")
+        rows.append({"feature_name": fn, "branch": branch,
+                     "formula_version": formula_version, "motivation": m, "status": "active"})
+    return rows

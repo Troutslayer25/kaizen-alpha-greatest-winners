@@ -32,6 +32,23 @@ def test_trend_anchor_tracks_long_ma():
     assert not trend_anchor(down).iloc[LATE]
 
 
+def test_breadth_is_future_invariant():
+    # Breadth/trend-anchor use trailing rolling windows; mutating future rows must not
+    # change any value at or before date D (PIT guard for the regime workstream).
+    wide = _wide("up")
+    base = compute_breadth(wide)
+    mutated = wide.copy()
+    mutated.iloc[LATE + 1:] = mutated.iloc[LATE + 1:] * np.random.default_rng(0).uniform(
+        0.5, 1.5, mutated.iloc[LATE + 1:].shape)
+    after = compute_breadth(mutated)
+    pd.testing.assert_frame_equal(base.iloc[:LATE + 1], after.iloc[:LATE + 1])
+
+    bench = np.linspace(100, 200, N)
+    bench_mut = bench.copy(); bench_mut[LATE + 1:] *= 1.3
+    a = trend_anchor(bench); b = trend_anchor(bench_mut)
+    assert (a.iloc[:LATE + 1] == b.iloc[:LATE + 1]).all()
+
+
 def test_regime_daily_assembles_and_labels():
     bench = np.linspace(100, 200, N)
     df = build_regime_daily(_wide("up"), bench)

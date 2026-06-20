@@ -20,6 +20,10 @@ def build_setup_labels(moves_by_ticker: dict, n_days: int, forward_window_k: int
     A point at index i is positive if some confirmed trough lies in (i, i + K]; its
     lead_time_days is (trough - i). Returns columns:
     ticker_id, as_of_index, label, forward_window_k, lead_time_days, linked_trough_index.
+
+    Multi-scale note: with the MFE detector, the SAME trough can appear at several scales.
+    Pass `moves_by_ticker` containing a SINGLE scale (the pre-committed primary scale), or
+    dedup troughs across scales before calling, so a trough is not labeled repeatedly.
     """
     rows = []
     hi = n_days if max_index is None else min(max_index, n_days)

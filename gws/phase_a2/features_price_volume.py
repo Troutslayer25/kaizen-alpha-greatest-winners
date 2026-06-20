@@ -18,6 +18,11 @@ from __future__ import annotations
 import numpy as np
 
 DEFAULT_LOOKBACKS = (21, 42, 63, 126)
+# CANONICAL-ONLY, NOT YET SWEPT. The MA family must be broadened to a swept window range
+# {3,5,8,10,13,21,30,50,100,150,200} x {SMA,EMA} before A3 MA findings are accepted, so the
+# predictive window is DISCOVERED, not assumed (otherwise discovery trivially re-finds 50/200
+# — a feature-selection-contamination vector). Pre-commit the swept family in the A2 spec.
+# See research/open_questions/moving_average_discovery.md.
 MA_PERIODS = (20, 50, 150, 200)
 
 

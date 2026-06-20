@@ -1,5 +1,12 @@
 """Two-step ATR-confirmed trough / up-move detector (Phase A1).
 
+NOTE: superseded as the canonical detector by the threshold-free multi-scale MFE detector
+(gws/phase_a1/move_detector_mfe.py). Retained as a reference / cross-check baseline — its
+fixed confirmation floor (3xATR + 10%) is exactly the detection floor the MFE design
+removes, so it is NOT used for the primary continuous move population. Kept for the
+absolute/volatility cross-check comparison (scripts/compare_move_detectors.py).
+
+
 Framework-neutral price-geometry detector: it makes no commitment to any pattern
 (base breakout, etc.). A trough is a volatility-confirmed local minimum on
 adjusted close; a move runs from that trough to the subsequent peak and is closed

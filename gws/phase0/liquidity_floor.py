@@ -1,6 +1,11 @@
-"""Empirical liquidity-floor discovery (Phase 0).
+"""Empirical liquidity-floor / knee-of-curve utility.
 
-The liquidity floor is discovered, not fixed: for each period it is the natural break
+v2 (2026-06-20): this is NOT a universe-eligibility gate. The institutional ADV floor was
+removed from universe construction (see phases/PHASE0_PRECOMMIT.md Rev v2) — liquidity is
+carried as a feature for A3 to discover, and capacity is applied at the deployment layer.
+This module is retained ONLY as a non-gating liquidity-tier / capacity bucketing utility.
+
+The knee is discovered, not fixed: for each period it is the natural break
 in the annual 50-day ADV distribution below which stocks become genuinely illiquid.
 The break is found by the knee-of-curve of the sorted log10(ADV) distribution (the
 point of maximum perpendicular distance from the chord joining its endpoints). Run

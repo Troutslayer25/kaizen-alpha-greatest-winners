@@ -69,26 +69,42 @@ CREATE INDEX IF NOT EXISTS ix_observations_tickerdate ON gws.observations (ticke
 
 -- ---------------------------------------------------------------------------
 -- Phase A1 — Moves
+-- Canonical detector: threshold-free, multi-scale MFE (gws/phase_a1/move_detector_mfe.py).
+-- ATR-swing (gws/phase_a1/trough_detector.py) is retained as a reference / cross-check
+-- baseline only. Detector parameters (scale set, primary scale, percentile-significance
+-- cutoff, the absolute-return cross-check) are finalized in the Phase A1 pre-commit.
+--
+-- PERSISTENCE CONTRACT (the detectors return ticker-agnostic, index-keyed dataclasses;
+-- the Phase-A1 writer performs this mapping — see move_detector_mfe.MoveMFE):
+--   MoveMFE.magnitude   -> total_pct_gain      MoveMFE.smoothness -> smoothness_metric
+--   MoveMFE.mae         -> mae                 MoveMFE.trail_atr  -> trail_atr
+--   MoveMFE.scale       -> scale               MoveMFE.is_open    -> is_open
+--   trough_idx/peak_idx -> start_date/peak_date (writer maps bar index -> calendar date)
+--   writer also attaches ticker_id, sets detection_system, and sets is_primary_scale
+--   (TRUE only for the pre-committed primary scale).
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS gws.moves (
   move_id            SERIAL PRIMARY KEY,
   ticker_id          INTEGER NOT NULL,
   start_date         DATE    NOT NULL,       -- trough — feature extraction anchor
   peak_date          DATE    NOT NULL,       -- never used in feature extraction
-  total_pct_gain     NUMERIC NOT NULL,       -- clustering dim 1: magnitude
+  total_pct_gain     NUMERIC NOT NULL,       -- clustering dim 1: magnitude  (MoveMFE.magnitude)
   duration_days      INTEGER NOT NULL,       -- clustering dim 2: duration
   smoothness_metric  NUMERIC,                -- clustering dim 3 (uncensored): path efficiency
-  max_intra_drawdown NUMERIC,                -- diagnostic/comparative (censored by reversal threshold)
-  detection_system   TEXT    NOT NULL,       -- 'atr_swing' (primary) | 'absolute_return' (confirmation)
-  reversal_threshold NUMERIC,
-  is_primary_scale   BOOLEAN NOT NULL DEFAULT TRUE,
+  mae                NUMERIC,                -- max adverse excursion below start (recorded, not gated)
+  max_intra_drawdown NUMERIC,                -- diagnostic/comparative (drawdown from running peak)
+  detection_system   TEXT    NOT NULL,       -- 'mfe' (canonical) | 'atr_swing' | 'absolute_return' (cross-check)
+  scale              TEXT,                   -- MFE multi-scale tag (e.g. 'trail_6'); NULL for non-MFE
+  trail_atr          NUMERIC,                -- the trailing-stop ATR multiple this move was detected at
+  reversal_threshold NUMERIC,                -- (atr_swing baseline only)
+  is_primary_scale   BOOLEAN NOT NULL DEFAULT TRUE,   -- writer sets per the pre-committed primary scale
   is_open            BOOLEAN NOT NULL DEFAULT FALSE,  -- move unresolved at series end
   cluster_id         INTEGER,                -- NULL until clustering complete
   cluster_label      TEXT,                   -- descriptive, post-hoc
   context_score      NUMERIC,                -- snapshot from regime_daily at start_date
   context_label      TEXT,
   is_control         BOOLEAN NOT NULL DEFAULT FALSE,
-  abs_return_tier    TEXT                    -- '10_25'|'25_50'|'50_100'|'100_300'|'300_plus'
+  magnitude_pctile   NUMERIC                 -- percentile of magnitude within the population (significance = percentile, not a hardcoded cutoff)
 );
 CREATE INDEX IF NOT EXISTS ix_moves_ticker ON gws.moves (ticker_id, start_date);
 
@@ -118,6 +134,11 @@ CREATE TABLE IF NOT EXISTS gws.cluster_stability (
 );
 
 -- Discovery dataset controls (case-control). Distinct from setup_labels (T1).
+-- PERSISTENCE CONTRACT: build_matched_controls (gws/phase_a1/matched_controls.py) returns
+-- pool rows + `matched_setup_id` (a setup row-index). The writer resolves
+-- matched_setup_id -> matched_move_id (the setup's move) and renames the caller's match
+-- columns to match_market_cap_bucket / match_sector / match_liquidity_bucket. Match values
+-- MUST be PIT (computed from data on/before the control's own date).
 CREATE TABLE IF NOT EXISTS gws.matched_controls (
   control_id              SERIAL PRIMARY KEY,
   matched_move_id         INTEGER NOT NULL REFERENCES gws.moves(move_id),
@@ -131,6 +152,10 @@ CREATE INDEX IF NOT EXISTS ix_matched_controls_tickerdate ON gws.matched_control
 
 -- Production-dataset forward-labeling artifact. INDEPENDENT sampling frame —
 -- NOT derived from matched_controls (T1).
+-- PERSISTENCE CONTRACT: build_setup_labels (gws/phase_a1/labeling.py) returns `as_of_index`
+-- (a bar index) and `linked_trough_index`. The writer maps as_of_index -> date and resolves
+-- linked_trough_index -> the move_id whose start_date is that trough -> linked_move_id.
+-- lead_time_days / linked_move_id are future-derived label metadata and MUST NEVER be features.
 CREATE TABLE IF NOT EXISTS gws.setup_labels (
   label_id         SERIAL PRIMARY KEY,
   ticker_id        INTEGER NOT NULL,
@@ -191,7 +216,7 @@ CREATE TABLE IF NOT EXISTS gws.features_context (
 
 CREATE TABLE IF NOT EXISTS gws.feature_catalog (
   feature_name    TEXT PRIMARY KEY,
-  branch          TEXT,                       -- 'price_volume'|'fundamental'|'context'
+  branch          TEXT,                       -- 'price_volume'|'fundamental'|'context'|'generic'
   formula_version TEXT,
   description      TEXT,
   first_used_date DATE,

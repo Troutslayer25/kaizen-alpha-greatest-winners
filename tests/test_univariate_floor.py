@@ -31,12 +31,14 @@ def test_univariate_fdr_controls_false_positives():
     assert res["significant"].sum() <= 2          # FDR keeps false positives near zero
 
 
-def test_liquidity_floor_sits_between_illiquid_and_liquid():
+def test_knee_separates_liquidity_tiers():
+    # v2: the knee is a non-gating liquidity-TIER bucketing utility (NOT a universe gate).
+    # It should land between a low-ADV mass and a high-ADV mass.
     rng = np.random.default_rng(2)
-    illiquid = rng.lognormal(np.log(1e5), 0.3, 500)     # ~$100k ADV cluster
-    liquid = rng.lognormal(np.log(5e7), 0.5, 2000)      # ~$50M ADV cluster
-    floor = discover_floor(np.concatenate([illiquid, liquid]))
-    assert np.median(illiquid) < floor < np.median(liquid)
+    low_tier = rng.lognormal(np.log(1e5), 0.3, 500)     # ~$100k ADV bucket
+    high_tier = rng.lognormal(np.log(5e7), 0.5, 2000)   # ~$50M ADV bucket
+    knee = discover_floor(np.concatenate([low_tier, high_tier]))
+    assert np.median(low_tier) < knee < np.median(high_tier)
 
 
 def test_knee_index_on_elbow_curve():

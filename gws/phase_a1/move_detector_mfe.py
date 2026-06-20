@@ -1,7 +1,12 @@
-"""Threshold-free, multi-scale move detector (prototype).
+"""Threshold-free, multi-scale move detector — CANONICAL Phase-A1 detector.
 
-Design settled with Scott (June 2026), in response to the "2.5-ATR move is invisible"
-critique of the ATR-swing detector:
+This is the adopted move-detection design (June 2026), replacing the ATR-swing detector
+(gws/phase_a1/trough_detector.py), which is retained only as a reference / cross-check
+baseline. The final parameters here — the scale set, which scale is primary, the
+percentile-significance cutoff, and the absolute-return cross-check detector — are
+finalized in the Phase-A1 pre-committed specification, informed by a gated real-data run.
+
+Design, in response to the "2.5-ATR move is invisible" critique of the ATR-swing detector:
 
 - **No confirmation floor.** Every local low seeds a move; magnitude is *measured*, not
   gated. The move population is a continuous distribution from tiny to huge — nothing is

@@ -6,38 +6,47 @@ from gws.phase_a3.backtest import decile_lift, capacity_diagnostic
 
 def test_tier1_when_all_criteria_met():
     r = classify_finding(wf_consistency=0.80, worst_fold_auc=0.55,
-                         effect_retention=0.60, significant_after_neutralization=True,
-                         pretrough_actionable=True)
+                         factor_retention=0.60, industry_retention=0.60,
+                         significant_after_neutralization=True, pretrough_actionable=True)
     assert r["tier"] == 1
     assert all(r["passed"].values())
 
 
 def test_tier2_when_walk_forward_consistency_misses():
     r = classify_finding(wf_consistency=0.50, worst_fold_auc=0.55,
-                         effect_retention=0.60, significant_after_neutralization=True,
-                         pretrough_actionable=True)
+                         factor_retention=0.60, industry_retention=0.60,
+                         significant_after_neutralization=True, pretrough_actionable=True)
     assert r["tier"] == 2
-    assert r["passed"]["neutralization"] and not r["passed"]["walk_forward"]
+    assert r["passed"]["factor_neutralization"] and not r["passed"]["walk_forward"]
 
 
 def test_catastrophic_fold_blocks_tier1():
     r = classify_finding(wf_consistency=0.90, worst_fold_auc=0.40,   # one fold reverses badly
-                         effect_retention=0.60, significant_after_neutralization=True,
-                         pretrough_actionable=True)
+                         factor_retention=0.60, industry_retention=0.60,
+                         significant_after_neutralization=True, pretrough_actionable=True)
     assert r["tier"] == 2                                            # neutralization holds, WF fails
+
+
+def test_industry_neutralization_alone_failing_blocks_tier1():
+    # survives factor neutralization but NOT industry -> not Tier 1 (both required)
+    r = classify_finding(wf_consistency=0.90, worst_fold_auc=0.60,
+                         factor_retention=0.60, industry_retention=0.20,
+                         significant_after_neutralization=True, pretrough_actionable=True)
+    assert r["tier"] == 3
+    assert r["passed"]["factor_neutralization"] and not r["passed"]["industry_neutralization"]
 
 
 def test_tier3_when_neutralization_fails():
     r = classify_finding(wf_consistency=0.90, worst_fold_auc=0.60,
-                         effect_retention=0.20, significant_after_neutralization=False,
-                         pretrough_actionable=True)
+                         factor_retention=0.20, industry_retention=0.20,
+                         significant_after_neutralization=False, pretrough_actionable=True)
     assert r["tier"] == 3
 
 
 def test_pretrough_requirement_can_block_tier1():
     r = classify_finding(wf_consistency=0.80, worst_fold_auc=0.55,
-                         effect_retention=0.60, significant_after_neutralization=True,
-                         pretrough_actionable=False)
+                         factor_retention=0.60, industry_retention=0.60,
+                         significant_after_neutralization=True, pretrough_actionable=False)
     assert r["tier"] == 2                                            # hindsight-only -> not Tier 1
 
 
