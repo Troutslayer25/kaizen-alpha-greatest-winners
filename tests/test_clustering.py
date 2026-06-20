@@ -2,6 +2,7 @@ import numpy as np
 
 from gws.phase_a1.clustering import (
     zscore, variation_of_information, cluster_stability, make_kmeans, make_hdbscan,
+    resolve_representation,
 )
 
 
@@ -47,3 +48,33 @@ def test_hdbscan_discovers_blob_count():
     labels = make_hdbscan(min_cluster_size=15)(X)
     n_clusters = len(set(np.unique(labels)) - {-1})
     assert n_clusters >= 2          # discovers the blob structure without being told k
+
+
+def test_resolve_representation_stable_uses_discrete():
+    X = _blobs()
+    labels = make_kmeans(3, seed=0)(X)
+    r = resolve_representation(X, make_kmeans(3, seed=0), labels, n_boot=20, seed=1)
+    assert r["representation"] == "discrete"   # well-separated -> discrete clusters
+
+
+def test_resolve_representation_structureless_uses_continuous():
+    rng = np.random.default_rng(5)
+    X = rng.uniform(0, 5, (300, 3))
+    labels = make_kmeans(3, seed=0)(X)
+    r = resolve_representation(X, make_kmeans(3, seed=0), labels, n_boot=20, seed=1)
+    # forced clusters on noise are unstable -> continuous fallback, no human call
+    assert r["representation"] == "continuous"
+
+
+def test_resolve_representation_marginal_is_decided_by_math():
+    # A marginal case must still yield a deterministic representation with a recorded
+    # variance comparison, never an undecided/None.
+    rng = np.random.default_rng(7)
+    # mildly separated blobs -> tends to land in the marginal ARI band
+    X = np.vstack([rng.normal([0, 0, 0], 1.2, (150, 3)),
+                   rng.normal([2.5, 2.5, 0], 1.2, (150, 3))])
+    labels = make_kmeans(2, seed=0)(X)
+    r = resolve_representation(X, make_kmeans(2, seed=0), labels, n_boot=20, seed=1)
+    assert r["representation"] in ("discrete", "continuous")
+    if r["verdict"] == "marginal":
+        assert r["discrete_var"] is not None and r["continuous_var"] is not None

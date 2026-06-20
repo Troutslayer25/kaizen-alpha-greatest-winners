@@ -12,6 +12,17 @@ are examined (OQ-19); they live here so the rule is auditable and version-contro
   Tier 2 — validated but not production-grade: survives neutralization & significant,
            but misses one Tier-1 criterion (e.g. walk-forward consistency).
   Tier 3 — exploratory: everything else.
+
+Economic mechanism (hardening, critique keepers):
+  Every Tier-1 finding carries a proposed economic mechanism as a REQUIRED ANNOTATION
+  (not a mechanical gate). To keep that annotation from re-admitting subjectivity:
+  - Blind review: the bias auditor votes on the LOGIC of the written mechanism WITHOUT
+    seeing the return/profit profile it generated (evaluate the physics, not the payoff).
+  - Optional auxiliary-prediction elevator: a mechanism that makes a FALSIFIABLE side
+    prediction which then verifies (e.g. "institutional accumulation" -> a corroborating
+    block-volume spike, or alignment with a Phase-A2 context factor) is the strongest
+    class of finding. Not required of every feature — an elevator, not a gate.
+  These are enforced in the auditor framework (Auditor 4), not in this classifier.
 """
 from __future__ import annotations
 

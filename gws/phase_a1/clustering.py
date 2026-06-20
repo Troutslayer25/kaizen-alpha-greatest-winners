@@ -80,3 +80,45 @@ def cluster_stability(X, clusterer, n_boot: int = 50, seed: int = 0) -> dict:
         "n_bootstrap_samples": n_boot,
         "stability_verdict": verdict,
     }
+
+
+def resolve_representation(X, clusterer, labels, *, n_quantile_bands: int = 10,
+                          n_boot: int = 50, seed: int = 0) -> dict:
+    """Programmatically choose discrete-clusters vs continuous-quantile-bands for a
+    MARGINAL stability result — removing the last human judgment call (critique keeper).
+
+    A 'stable' verdict uses discrete clusters; 'unstable'/'no_structure' uses the
+    continuous-spectrum fallback. For the ambiguous 'marginal' band (ARI 0.6-0.8), this
+    scores both representations on within-group dispersion of the FIRST clustering input
+    dimension (lower mean within-group variance = the cleaner partition of the data) and
+    selects the lower-variance one. The math decides, not the analyst.
+
+    Returns {representation: 'discrete'|'continuous', verdict, discrete_var, continuous_var}.
+    Uses ARI thresholds via cluster_stability; no new tunable cutoff is introduced.
+    """
+    X = np.asarray(X, float)
+    stab = cluster_stability(X, clusterer, n_boot=n_boot, seed=seed)
+    verdict = stab["stability_verdict"]
+    if verdict == "stable":
+        return {"representation": "discrete", "verdict": verdict,
+                "discrete_var": None, "continuous_var": None}
+    if verdict in ("unstable", "no_structure"):
+        return {"representation": "continuous", "verdict": verdict,
+                "discrete_var": None, "continuous_var": None}
+
+    # marginal -> tie-break on within-group dispersion of dimension 0
+    dim0 = X[:, 0]
+    discrete_var = _mean_within_group_var(dim0, labels)
+    q = np.clip((dim0.argsort().argsort() * n_quantile_bands) // len(dim0),
+                0, n_quantile_bands - 1)
+    continuous_var = _mean_within_group_var(dim0, q)
+    rep = "discrete" if discrete_var <= continuous_var else "continuous"
+    return {"representation": rep, "verdict": verdict,
+            "discrete_var": float(discrete_var), "continuous_var": float(continuous_var)}
+
+
+def _mean_within_group_var(values, groups) -> float:
+    values = np.asarray(values, float)
+    groups = np.asarray(groups)
+    vs = [values[groups == g].var() for g in np.unique(groups) if g != -1 and (groups == g).sum() > 1]
+    return float(np.mean(vs)) if vs else float("inf")

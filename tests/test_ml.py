@@ -4,7 +4,9 @@ import pytest
 from gws.phase_a3.ml_bakeoff import (
     build_estimators, run_walk_forward, permutation_importance_oos,
 )
-from gws.phase_a3.calibration import fit_calibrator, reliability_table, brier
+from gws.phase_a3.calibration import (
+    fit_calibrator, reliability_table, brier, calibration_decay,
+)
 
 
 def _classification_world(seed=0, n=1500):
@@ -67,3 +69,29 @@ def test_isotonic_calibration_improves_brier():
     after = brier(cal(p_overconf[half:]), y[half:])
     assert after <= before                                    # calibration does not worsen Brier
     assert len(reliability_table(p_overconf, y)) > 0
+
+
+def test_calibration_decay_no_alarm_when_discrimination_strong():
+    # Strongly discriminating, already well-calibrated probs: the transform does little
+    # heavy lifting -> no alarm.
+    rng = np.random.default_rng(8)
+    n = 4000
+    p_true = 1 / (1 + np.exp(-rng.normal(0, 2, n)))           # well-separated
+    y = (rng.uniform(size=n) < p_true).astype(int)
+    d = calibration_decay(p_true, p_true, y)
+    assert d["auc"] > 0.8
+    assert not d["alarm"]
+
+
+def test_calibration_decay_alarms_when_transform_does_the_work():
+    # Near-random ranking (AUC ~0.5) but the calibration transform pulls Brier toward the
+    # base rate -> the transform is masking thin discrimination -> alarm.
+    rng = np.random.default_rng(9)
+    n = 4000
+    y = rng.integers(0, 2, n)
+    raw = np.clip(0.5 + rng.normal(0, 0.25, n), 0.01, 0.99)   # uninformative, noisy
+    cal = fit_calibrator(raw[: n // 2], y[: n // 2], method="isotonic")
+    calibrated = cal(raw)
+    d = calibration_decay(raw, calibrated, y)
+    assert d["auc"] < 0.6
+    assert d["alarm"]
