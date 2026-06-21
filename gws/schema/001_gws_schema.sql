@@ -236,6 +236,25 @@ CREATE TABLE IF NOT EXISTS gws.feature_catalog (
 -- ---------------------------------------------------------------------------
 -- Phase A3 — Statistical discovery
 -- ---------------------------------------------------------------------------
+
+-- Entry-point analysis (Method 8, expanded): candidate entries ALONG each move — including
+-- points of strength (breakout / gap / MA-reclaim), not only the pre-trough window — scored by
+-- forward reward/risk. "Low-risk entry" = best forward_mfe / forward_mae. Detector unchanged;
+-- this is an analysis layer on top of gws.moves. See research/entry_point_discovery.md.
+CREATE TABLE IF NOT EXISTS gws.entry_candidates (
+  entry_id       BIGSERIAL PRIMARY KEY,
+  move_id        INTEGER NOT NULL REFERENCES gws.moves(move_id),
+  ticker_id      INTEGER NOT NULL,
+  as_of_date     DATE    NOT NULL,            -- the candidate entry date (joins the feature store)
+  entry_type     TEXT,                         -- descriptive, post-hoc: 'trough'|'pullback'|'strength'|...
+  forward_mfe    NUMERIC,                       -- reward: max favorable excursion from here to peak
+  forward_mae    NUMERIC,                       -- risk: max adverse excursion from here before the gain
+  reward_risk    NUMERIC,                       -- forward_mfe / forward_mae (the low-risk-entry score)
+  days_to_peak   INTEGER,
+  UNIQUE (move_id, as_of_date)
+);
+CREATE INDEX IF NOT EXISTS ix_entry_candidates_tickerdate ON gws.entry_candidates (ticker_id, as_of_date);
+
 CREATE TABLE IF NOT EXISTS gws.feature_decay (
   feature_name      TEXT    NOT NULL,
   target            TEXT    NOT NULL,

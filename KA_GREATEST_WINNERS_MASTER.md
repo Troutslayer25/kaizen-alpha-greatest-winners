@@ -134,7 +134,25 @@ Helpers (BH-FDR, Cohen's d, ticker block bootstrap) **[BUILT]**; univariate scre
 aware test, effect sizes, KS, BH-FDR) **[BUILT]**; factor+industry neutralization **[BUILT]**;
 mutual information **[BUILT]**; feature decay + pre-trough actionability **[BUILT]**; ML bake-
 off (RF/XGB/LGBM/ElasticNet/SVM in walk-forward; permutation imp OOS; SHAP) **[BUILT]**;
-regime-conditioned analysis **[FORWARD]**; entry-point analysis **[FORWARD]**.
+regime-conditioned analysis **[FORWARD]**; **entry-point analysis (Method 8, expanded) [FORWARD]**.
+
+**Entry-point analysis — low-risk entries *along* the move (Method 8).** The move detector
+anchors at troughs; pullback/dip entries are already captured as nested smaller-scale-move
+troughs, but breakout / earnings-gap / MA-reclaim entries are *points of strength* — never
+local lows at any scale — so they are out of reach of any trough anchor. Method 8 therefore
+evaluates candidate entries at points *along* each detected move (not only the pre-trough
+window), **including points of strength**, and scores each empirically by forward reward/risk:
+**reward = forward MFE** (upside remaining to the peak), **risk = forward MAE** (worst drawdown
+from that point). "Low-risk entry" is *defined* as the best forward MFE/MAE — discovered, never
+a pre-defined pattern. The production version forward-labels arbitrary `(ticker, as_of_date)`
+points by forward reward/risk (deployment-matched, hindsight-free), exactly like the setup
+classifier. This operationalizes the trough-vs-breakout experiment (§12.2): the data adjudicates
+whether entering at the bottom or at a point of strength gives better risk-adjusted forward
+return. **The move detector is unchanged** — this is purely an A3 analysis layer on top of the
+moves already detected. Bias discipline: validated by our own methods (neutralization,
+walk-forward, findings hierarchy) — NOT by agreement with any external framework; CANSLIM /
+sealed hypotheses are consulted only at B3 for convergence-vs-novelty. Full spec:
+`research/entry_point_discovery.md`.
 
 **Research-path multiple testing [BUILT]:** family-level (hierarchical) FDR — a feature family
 must clear family-level correction before its members are inspected — plus deflated Sharpe for

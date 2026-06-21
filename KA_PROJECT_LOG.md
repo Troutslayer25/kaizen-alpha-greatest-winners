@@ -15,6 +15,14 @@ Entry format:
 
 ---
 
+## 2026-06-21 — Design refinement (on-the-fly, post-close)
+**Event type:** DECISION
+**Auditor or trigger:** Off-the-record design debate with Scott surfaced a real gap (the kind we agreed to handle on the fly)
+**Finding:** The move detector anchors entries at troughs. Multi-scale detection already captures pullback/dip entries (as nested-move troughs), but breakout / earnings-gap / MA-reclaim entries are POINTS OF STRENGTH — never local lows at any scale — so no trough anchor reaches them. The study could capture every move yet never flag the buyable pivot Scott actually trades.
+**Remediation (design change, pre-committed before any A3 implementation):** Expand Phase A3 Method 8 (entry-point analysis) to evaluate candidate entries at points ALONG each move — including points of strength, not only the pre-trough window — scored empirically by forward reward (MFE) / risk (MAE). "Low-risk entry" defined as best forward MFE/MAE; no pattern pre-defined. Production version forward-labels arbitrary points (hindsight-free). **Move detector UNCHANGED** — analysis layer only. Same bias guards; validation by our own methods, NOT by CANSLIM agreement; frameworks consulted only at B3 (convergence vs novelty). Operationalizes the trough-vs-breakout experiment. New schema table `gws.entry_candidates`. Full spec: `research/entry_point_discovery.md`.
+**Resolution:** Rolled into the spec (master doc §8, design note, schema, this log). Discovery-first integrity preserved (framework-neutral; CANSLIM sealed to B3). Not a contamination event — pure method.
+**Scott sign-off:** approved 2026-06-21
+
 ## 2026-06-20 — Design phase CLOSED
 **Event type:** DECISION
 **Auditor or trigger:** Final external institutional review (8.8 institutional research quality)

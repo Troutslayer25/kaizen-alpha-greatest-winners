@@ -8,6 +8,7 @@ Discovery-first quantitative study of the pre-move characteristics of stocks bef
 - **Study design (original):** `KA_GREATEST_WINNERS_STUDY_V10.md` (source doc held outside the repo)
 - **Audit framework:** `KA_AUDITOR_PROMPTS_V11.md` (four independent phase-gate auditors)
 - **Regime-conditional design note:** `research/regime_conditional_discovery.md`
+- **Entry-point discovery note:** `research/entry_point_discovery.md` (Method 8 expansion — low-risk entries along the move)
 - **Phase 0 pre-commit:** `phases/PHASE0_PRECOMMIT.md`
 - **Project log:** `KA_PROJECT_LOG.md` (every HALT / escalation / gate decision)
 
