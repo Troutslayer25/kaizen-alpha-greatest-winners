@@ -102,6 +102,33 @@ def compute_features(close, high, low, volume, i, *, bench_close=None,
             if vw.sum() > 0:
                 feats[f"cmf_{lb}"] = float((clv * vw).sum() / vw.sum())
 
+    # Consolidation / base-structure family (first principles): how deep the range, where
+    # price sits in it, whether volatility is contracting, how tight the action is. Measures
+    # base/contraction structure neutrally — clustering finds the base-like shapes; no named
+    # pattern (e.g. VCP) is asserted.
+    for lb in lookbacks:
+        w = _window(close, i, lb)
+        if w is None:
+            continue
+        mx, mn = float(w.max()), float(w.min())
+        if mx > 0:
+            feats[f"base_depth_{lb}"] = (mx - mn) / mx                  # range depth (drawdown across the base)
+        if mx > mn:
+            feats[f"range_position_{lb}"] = (px - mn) / (mx - mn)       # where in the range price sits (near 1 = top/breakout area)
+        # volatility contraction: recent-half ATR vs earlier-half ATR (<1 = contracting)
+        half = lb // 2
+        atr_recent = _mean_true_range(high, low, close, i, half)
+        atr_earlier = _mean_true_range(high, low, close, i - half, half)
+        if atr_recent is not None and atr_earlier is not None and atr_earlier > 0:
+            feats[f"vol_contraction_{lb}"] = atr_recent / atr_earlier
+        # tightness: share of days with daily range below the window-median range
+        hw = _window(high, i, lb); lw = _window(low, i, lb)
+        if hw is not None and lw is not None:
+            rng = hw - lw
+            med = np.median(rng)
+            if med > 0:
+                feats[f"tight_days_share_{lb}"] = float(np.mean(rng < med))
+
     # range tightness: short-window range vs longer-window range (< 1 = tightening)
     short = _mean_true_range(high, low, close, i, lookbacks[0])
     longw = _mean_true_range(high, low, close, i, lookbacks[-1])
@@ -120,13 +147,24 @@ def compute_features(close, high, low, volume, i, *, bench_close=None,
         vals = np.array(list(ma_vals.values()))
         feats["ma_compression"] = float((vals.max() - vals.min()) / px)
 
-    # relative strength vs benchmark over each lookback
+    # Relative-strength family vs benchmark (the core leadership signal). Beyond simple
+    # outperformance: the slope of the RS line, and whether the RS line is at a NEW HIGH —
+    # RS-line-leads-price is a classic leading tell. (Rank-within-universe/sector needs the
+    # cross-sectional panel and is added at extraction time, not here.)
     if bench_close is not None:
         bench_close = np.asarray(bench_close, float)
+        rs_line = np.where(bench_close > 0, close / bench_close, np.nan)
         for lb in lookbacks:
             if i - lb >= 0 and close[i - lb] > 0 and bench_close[i] > 0 and bench_close[i - lb] > 0:
                 stock_ret = close[i] / close[i - lb]
                 bench_ret = bench_close[i] / bench_close[i - lb]
                 feats[f"rel_strength_{lb}"] = float(stock_ret / bench_ret - 1.0)
+            rw = _window(rs_line, i, lb)
+            if rw is not None and np.isfinite(rw).all() and rw.mean() != 0:
+                sl = np.polyfit(np.arange(lb), rw, 1)[0] if lb > 1 else 0.0
+                feats[f"rs_line_slope_{lb}"] = float(sl / abs(rw.mean()))     # normalized RS-line slope
+                mxr = rw.max()
+                if mxr > 0:
+                    feats[f"rs_at_high_{lb}"] = float(rw[-1] / mxr)            # RS at new high (~1 = leadership tell)
 
     return feats

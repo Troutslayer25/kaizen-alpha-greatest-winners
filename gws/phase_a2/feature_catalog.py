@@ -41,6 +41,18 @@ PRICE_VOLUME_MOTIVATION = {
     "up_vs_down_vol_extreme": "practitioner_derived", # accumulation dominance: biggest buying vs biggest selling day
     "cmf": "practitioner_derived",                    # Chaikin money flow (named indicator)
     "rel_strength": "practitioner_derived",
+    # consolidation / base-structure family
+    "base_depth": "practitioner_derived",
+    "range_position": "practitioner_derived",
+    "vol_contraction": "practitioner_derived",
+    "tight_days_share": "practitioner_derived",
+    # relative-strength line family
+    "rs_line_slope": "practitioner_derived",
+    "rs_at_high": "practitioner_derived",
+    # group / sector strength (gws/phase_a2/group_strength.py)
+    "sector_rs": "practitioner_derived",
+    "sector_rs_slope": "practitioner_derived",
+    "group_strength": "practitioner_derived",
 }
 
 # Generic/auto feature families (gws/phase_a2/generic_features.py). Listed here so a

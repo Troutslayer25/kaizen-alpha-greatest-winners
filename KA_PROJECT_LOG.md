@@ -15,6 +15,16 @@ Entry format:
 
 ---
 
+## 2026-06-21 — Trend-following foundations (7 additions)
+**Event type:** DECISION
+**Auditor or trigger:** Off-the-record design debate with Scott ("what strengthens the foundation, bias-free, that we'd backtrack to add later?")
+**Finding / remediation:** Seven comprehensiveness/capability additions (wider neutral net + data capture, never assertions). See `research/trend_following_foundations.md`.
+- BUILT (A2 feature code, tested): #3 consolidation/base family (base_depth, range_position, vol_contraction, tight_days_share); #4 RS-line family (rs_line_slope, rs_at_high); #2 group-strength function (`group_strength.py` — sector_rs, sector_rs_slope, group_strength); #7 weekly-resample helper (`common/resample.py`, families run on both timeframes). All motivation-tagged (fail-closed), PIT-clean (future-invariance harness). +8 tests, 115 pass.
+- SPEC (Phase 0 data capture, PHASE0_PRECOMMIT v3): #2 sector/industry + sector returns (Norgate, potentially deep-history); #5 earnings report dates as event markers (FMP, modern-window only); #6 free float (FMP, modern-window only). All recorded as features/markers, never gates; earnings/float join the fundamental branch (NULL in deep history per the branch-availability design).
+- DESIGN (implement in A1): #1 failed-lookalike negatives — the negative/control set must include configuration-matched FAILED setups, not random non-events (the trend-following discriminator). Defined by configuration, bias-clean.
+**Resolution:** Built + pre-committed before any implementation. Rationale: data capture + feature families are the expensive-to-backtrack layers; do now. Bias discipline intact (first-principles measurements, sealed frameworks, motivation tags).
+**Scott sign-off:** approved 2026-06-21
+
 ## 2026-06-21 — A2 volume family + sealed-hypothesis vault stood up
 **Event type:** DECISION
 **Auditor or trigger:** Off-the-record design debate with Scott

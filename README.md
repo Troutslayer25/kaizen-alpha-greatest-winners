@@ -10,6 +10,7 @@ Discovery-first quantitative study of the pre-move characteristics of stocks bef
 - **Regime-conditional design note:** `research/regime_conditional_discovery.md`
 - **Entry-point discovery note:** `research/entry_point_discovery.md` (Method 8 expansion — low-risk entries along the move)
 - **Market-context inputs note:** `research/market_context_inputs.md` (regime measurements; swept breadth-MA surface)
+- **Trend-following foundations note:** `research/trend_following_foundations.md` (base/RS/group/volume families; failed-lookalikes; data capture)
 - **Phase 0 pre-commit:** `phases/PHASE0_PRECOMMIT.md`
 - **Project log:** `KA_PROJECT_LOG.md` (every HALT / escalation / gate decision)
 
