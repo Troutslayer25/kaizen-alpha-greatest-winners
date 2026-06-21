@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from gws.regime.breadth import compute_breadth
+from gws.regime.breadth import compute_breadth, SWEEP_PERIODS
 from gws.regime.context import trend_anchor, build_regime_daily
 
 N = 320
@@ -30,6 +30,26 @@ def test_trend_anchor_tracks_long_ma():
     down = np.linspace(200, 100, N)
     assert trend_anchor(up).iloc[LATE]
     assert not trend_anchor(down).iloc[LATE]
+
+
+def test_breadth_sweep_produces_full_surface():
+    b = compute_breadth(_wide("up"))
+    for p in SWEEP_PERIODS:
+        assert f"pct_above_sma{p}" in b.columns            # the FOMO indicator generalized: full sweep
+    assert "breadth_spread_5_200" in b.columns              # short/long term-structure spread
+
+
+def test_breadth_term_structure_spread_goes_negative_on_fast_rollover():
+    # Long uptrend (everyone above the long MA) then a short recent dip below the fast MA:
+    # short-horizon breadth collapses while long-horizon breadth holds -> spread negative.
+    n_up, n_dip = 250, 8
+    col = np.concatenate([np.linspace(100, 200, n_up), np.linspace(200, 188, n_dip)])
+    wide = pd.DataFrame({tk: col.copy() for tk in range(5)})
+    b = compute_breadth(wide)
+    last = b.index[-1]
+    assert b["pct_above_sma5"].loc[last] < 0.2              # fast breadth rolled over
+    assert b["pct_above_sma200"].loc[last] > 0.8            # slow breadth still healthy
+    assert b["breadth_spread_5_200"].loc[last] < -0.5       # the leading-divergence measure fires
 
 
 def test_breadth_is_future_invariant():

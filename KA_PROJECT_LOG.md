@@ -15,6 +15,14 @@ Entry format:
 
 ---
 
+## 2026-06-21 — Design refinement: swept breadth-MA surface (on-the-fly)
+**Event type:** DECISION
+**Auditor or trigger:** Off-the-record design debate with Scott (market-health inputs)
+**Finding:** The "% of stocks above the 5-day MA" (FOMO indicator) is valuable but hardcoding one named horizon contradicts the discovery-first principle — and the same logic already applied to stock-level MAs (sweep, don't hardcode).
+**Remediation (design change, code built):** `compute_breadth` (`gws/regime/breadth.py`) now computes **% of the eligible universe above the N-day MA across a SWEEP** (`SWEEP_PERIODS = 5,8,10,13,21,50,100,200`) plus a short/long **breadth term-structure spread** (`breadth_spread_5_200`) as a candidate leading-divergence measure. Analyzed as a response curve (not N collinear features); both tails informative; lead-lag analysis discovers which horizon leads vs describes. Price-derived → deep-history → full-study input (not an overlay). Discovery-first: 5-day winning would confirm FOMO; another horizon = novel. Design note: `research/market_context_inputs.md` (also captures the neutral-measurement-vs-sealed-framework split and the candidate market-context input set: VIX family, COR1M/realized correlation, credit spreads, curve slope, rotation ratios, etc., to be pre-committed with the market-context spec). 2 new tests; 106 pass.
+**Resolution:** Built + committed. Discovery-first integrity preserved (swept not hardcoded; measurement not framework; relationship discovered).
+**Scott sign-off:** approved 2026-06-21
+
 ## 2026-06-21 — Design refinement (on-the-fly, post-close)
 **Event type:** DECISION
 **Auditor or trigger:** Off-the-record design debate with Scott surfaced a real gap (the kind we agreed to handle on the fly)
