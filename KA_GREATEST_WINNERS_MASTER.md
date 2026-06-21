@@ -241,6 +241,10 @@ These treat each major assumption as a falsifiable sub-study. Each is a *margina
 
 ## 13. SNOWBALL-RISK REGISTER (ranked; challenge the ranking)
 Where an early, error-throwing-silent mistake propagates through everything or wastes a big run.
+Ranking revised 2026-06-21: **researcher degrees of freedom moved #10 → #7** — the feature net
+is now wide enough (volume/base/RS/group/breadth/weekly/float/earnings families) that hidden
+selection pressure outranks several implementation risks. The feature net is **frozen** pending
+real data (§ note below); no further expansion before the Gate 0.5 pilot.
 1. **Target non-stationarity (premise risk).** If "great winner setup" isn't a stable
    phenomenon, a universal model is mud. Mitigated by making regime a discovery axis + the
    transfer test (#12.1) as an early go/no-go. *Biggest risk; conceptual, not a bug.*
@@ -257,19 +261,28 @@ Where an early, error-throwing-silent mistake propagates through everything or w
    pre-check mitigate.
 6. **`available_date` correctness.** Wrong filing dates = invisible look-ahead. The CHECK
    enforces the rule, not the dates' correctness.
-7. **K (forward window).** Defines production labels; mislabeling propagates. From decay +
+7. **Researcher degrees of freedom (raised from #10).** The now-wide feature net × lookbacks ×
+   scales × targets × controls × regimes × models creates hidden selection pressure that
+   exceeds some implementation risks. Defense: family-level FDR, the true lockbox, the
+   marginal-sensitivity discipline, negative controls, **and a frozen feature net** (no
+   expansion during discovery). The brake on comprehensiveness is now itself a control.
+8. **K (forward window).** Defines production labels; mislabeling propagates. From decay +
    sensitivity in B2.
-8. **Multi-scale dependence / inflated N.** Overlapping moves overstate significance if
+9. **Multi-scale dependence / inflated N.** Overlapping moves overstate significance if
    ticker-clustered inference isn't applied everywhere; family-FDR + marginal-sensitivity
    discipline help.
-9. **Matched-control design.** No ground truth; findings can be matching artifacts. Mitigated
-   by multiple control constructions (#12.5).
-10. **Researcher degrees of freedom.** The rich method set creates hidden selection pressure;
-    family-FDR + lockbox + marginal-sensitivity discipline are the defense, but it remains the
-    subtlest risk.
+10. **Failed-lookalike / matched-control design.** No ground truth; findings can be matching
+    artifacts, and the negatives must include configuration-matched failures (the trend
+    discriminator). Mitigated by multiple control constructions (#12.5).
 11. **Compute cost of late-discovered bugs.** A bug found after a multi-day full-universe run
     (esp. #3/#4/#6, which throw no error) is expensive — the reason Gate 0.5 (pilot) and the
     negative-control harness exist: break the pipeline cheap, first.
+
+**Feature net FROZEN (2026-06-21).** Comprehensiveness has reached the point of diminishing
+returns vs. overfitting pressure (per external review). The feature catalog is closed pending
+real data: the A2 pre-commit fixes the final list, and no features are added during discovery.
+Further capability questions wait for the Gate 0.5 pilot. This converts "stop expanding" from
+guidance into an enforced constraint and is itself a researcher-DoF control.
 
 ---
 

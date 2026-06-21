@@ -15,6 +15,16 @@ Entry format:
 
 ---
 
+## 2026-06-21 — Feature net FROZEN + risk re-ranking (review feedback)
+**Event type:** DECISION
+**Auditor or trigger:** External review (9.2/10) of the 2026-06-21 review package
+**Finding:** The feature-net expansion (volume/base/RS/group/breadth/weekly/float/earnings) improved comprehensiveness but pushed the project to the inflection where comprehensiveness itself becomes overfitting pressure. Researcher degrees of freedom is now under-ranked at #10.
+**Remediation:**
+1. **Risk register re-ranked** (master doc §13): researcher degrees of freedom moved #10 → #7, above several implementation risks (K, multi-scale dependence, failed-lookalike controls shift down).
+2. **Feature net FROZEN pending real data.** The catalog is closed: the A2 pre-commit fixes the final feature list; no features added during discovery. Converts "stop expanding" from advice into an enforced constraint — itself a researcher-DoF control. Further capability questions wait for the Gate 0.5 pilot.
+**Resolution:** Design expansion halted. Remaining uncertainties are now EMPIRICAL (does emotional invariance hold; does the transfer test pass; breakout vs trough; are failed-lookalikes distinguishable; are signals regime-specific) — only data answers them. Reviewer-approved next steps: Norgate ingest → Phase 0 → Gate 0.5 pilot → stationarity transfer + trough-vs-breakout experiments, before any further methodology expansion.
+**Scott sign-off:** approved 2026-06-21
+
 ## 2026-06-21 — Trend-following foundations (7 additions)
 **Event type:** DECISION
 **Auditor or trigger:** Off-the-record design debate with Scott ("what strengthens the foundation, bias-free, that we'd backtrack to add later?")
