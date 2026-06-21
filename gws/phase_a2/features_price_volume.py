@@ -71,17 +71,36 @@ def compute_features(close, high, low, volume, i, *, bench_close=None,
         if atr is not None:
             feats[f"atr_pct_{lb}"] = atr / px
 
+        # Volume family — comprehensive FROM FIRST PRINCIPLES (levels, surge, up/down balance,
+        # up/down extremes, accumulation share, trend, money flow). Designed to span the natural
+        # ways to measure volume behaviour so that any volume-based accumulation signal — named
+        # or not — can be discovered; NOT reverse-engineered to any specific practitioner rule.
         vw = _window(volume, i, lb)
         prior = _window(volume, i - lb, lb)
         if vw is not None and prior is not None and prior.mean() > 0:
-            feats[f"vol_ratio_{lb}"] = float(vw.mean() / prior.mean())
+            feats[f"vol_ratio_{lb}"] = float(vw.mean() / prior.mean())          # recent vs prior level (<1 = contraction)
+        if vw is not None and vw.mean() > 0:
+            feats[f"vol_surge_{lb}"] = float(volume[i] / vw.mean())             # today's volume vs recent average (RVOL)
+            sl = np.polyfit(np.arange(lb), vw, 1)[0] if lb > 1 else 0.0
+            feats[f"vol_trend_{lb}"] = float(sl / vw.mean())                    # normalized volume slope
         cw = _window(close, i, lb + 1)
         vw2 = _window(volume, i, lb)
         if cw is not None and vw2 is not None:
             dr = np.diff(cw)
-            up = vw2[dr > 0].sum()
-            dn = vw2[dr < 0].sum()
-            feats[f"updown_vol_{lb}"] = float(up / dn) if dn > 0 else np.nan
+            up_v = vw2[dr > 0]; dn_v = vw2[dr < 0]
+            up = up_v.sum(); dn = dn_v.sum(); tot = vw2.sum()
+            feats[f"updown_vol_{lb}"] = float(up / dn) if dn > 0 else np.nan    # up vs down volume balance
+            if tot > 0:
+                feats[f"accum_vol_share_{lb}"] = float(up / tot)               # share of volume on up days
+            if up_v.size and dn_v.size and dn_v.max() > 0:
+                feats[f"up_vs_down_vol_extreme_{lb}"] = float(up_v.max() / dn_v.max())  # biggest buying vs biggest selling day
+        # Chaikin money flow: close-location-value weighted volume (accumulation/distribution)
+        hw = _window(high, i, lb); lw = _window(low, i, lb); ccw = _window(close, i, lb)
+        if hw is not None and lw is not None and ccw is not None and vw is not None:
+            rng = hw - lw
+            clv = np.where(rng > 0, ((ccw - lw) - (hw - ccw)) / rng, 0.0)
+            if vw.sum() > 0:
+                feats[f"cmf_{lb}"] = float((clv * vw).sum() / vw.sum())
 
     # range tightness: short-window range vs longer-window range (< 1 = tightening)
     short = _mean_true_range(high, low, close, i, lookbacks[0])

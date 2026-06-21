@@ -15,6 +15,16 @@ Entry format:
 
 ---
 
+## 2026-06-21 — A2 volume family + sealed-hypothesis vault stood up
+**Event type:** DECISION
+**Auditor or trigger:** Off-the-record design debate with Scott
+**Finding / remediation:**
+1. **A2 volume feature family expanded comprehensively from first principles** (`compute_features`, `gws/phase_a2/features_price_volume.py`): added vol_surge (RVOL), vol_trend, accum_vol_share, up_vs_down_vol_extreme (biggest buying vs biggest selling day), and cmf (Chaikin money flow), alongside the existing vol_ratio / updown_vol. Designed across the natural ways to measure volume so any volume-based accumulation signal can be DISCOVERED — NOT reverse-engineered to any specific practitioner rule (general measures + the standard lookback sweep, not a named rule's specific window). New prefixes added to the motivation map (fail-closed). Future-invariance (PIT) auto-covered by the existing harness; +1 test. 107 pass.
+2. **Sealed-hypothesis vault stood up** (hash-commitment mechanism): `research/hypothesis_commitments.md` (committed) records opaque IDs + SHA-256 of private plaintext priors kept local/gitignored at `research/hypotheses/sealed/` (never pushed). The commit timestamp proves a prior predates discovery; the opaque ID reveals no subject, so even the committed record cannot bias discovery; at B3 the plaintext is revealed and re-hashed to verify. First entry **h001** sealed (a pre-data prior to be compared against discovered findings at B3). Subject is private to Scott; not recorded here by design.
+**Resolution:** Built + committed. Bias integrity preserved (volume family justified on first-principles grounds; hypothesis sealed opaque, opened only at B3).
+**Scott sign-off:** approved 2026-06-21
+**Note:** Scott should keep a private backup of the `research/hypotheses/sealed/` plaintext (gitignored = not in GitHub); if lost before B3 the commitment cannot be verified.
+
 ## 2026-06-21 — Design refinement: swept breadth-MA surface (on-the-fly)
 **Event type:** DECISION
 **Auditor or trigger:** Off-the-record design debate with Scott (market-health inputs)

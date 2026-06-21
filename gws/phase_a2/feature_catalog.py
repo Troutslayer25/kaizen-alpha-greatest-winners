@@ -30,11 +30,16 @@ PRICE_VOLUME_MOTIVATION = {
     "ret_std": "generic_statistical",
     "dist_from_low": "generic_statistical",
     "vol_ratio": "generic_statistical",
+    "vol_surge": "generic_statistical",
+    "vol_trend": "generic_statistical",
     "range_tightness": "practitioner_derived",
     "dist_from_high": "practitioner_derived",
     "price_to_ma": "practitioner_derived",
     "ma_compression": "practitioner_derived",
     "updown_vol": "practitioner_derived",
+    "accum_vol_share": "practitioner_derived",       # accumulation concept
+    "up_vs_down_vol_extreme": "practitioner_derived", # accumulation dominance: biggest buying vs biggest selling day
+    "cmf": "practitioner_derived",                    # Chaikin money flow (named indicator)
     "rel_strength": "practitioner_derived",
 }
 

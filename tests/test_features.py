@@ -55,6 +55,23 @@ def test_relative_strength_sign():
     assert f["rel_strength_126"] > 0                     # outperformance
 
 
+def test_volume_family_captures_accumulation():
+    # Mixed up/down series (so the up/down-extreme is defined) with a big up-day volume spike
+    # and small down-day volume -> accumulation measures should reflect buying dominance.
+    n = 260
+    rng = np.random.default_rng(0)
+    rets = rng.normal(0.0015, 0.01, n)        # both up and down days, slight upward drift
+    rets[250] = 0.02                           # force day 250 to be an up day
+    close = 100.0 * np.cumprod(1 + rets)
+    high, low = close * 1.01, close * 0.99
+    volume = np.full(n, 1_000_000.0)
+    volume[250] = 6_000_000.0                  # a big up-day volume spike
+    f = compute_features(close, high, low, volume, 255)
+    assert f["up_vs_down_vol_extreme_21"] > 1.5    # biggest buying day dwarfs biggest selling day
+    assert f["accum_vol_share_21"] > 0.5           # majority of volume on up days
+    assert "cmf_21" in f and "vol_trend_21" in f and "vol_surge_21" in f
+
+
 def test_skips_unavailable_lookbacks():
     close, high, low, volume, _ = _series(n=40, seed=2)
     f = compute_features(close, high, low, volume, 30)
