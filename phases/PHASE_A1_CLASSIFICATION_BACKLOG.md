@@ -37,3 +37,22 @@
   the current days-since-high / VCP / stage proxies.
 - **Expensive-family vectorization** (polyfit slopes, CMF, generic bank) — where the real compute
   win is; each extends the vectorized path under `gws/validation/feature_equality`.
+
+## HYPOTHESIS-TESTING FIDELITY (for the sealed practitioner priors h002–h006)
+The sealed convergence hypotheses lean on four signatures we currently only PROXY. Adding these as
+real PIT inception fields lets the B3 convergence check credit the actual method, not a loose stand-in.
+All are additive inception fields (bump `persist_moves.CHAR_VERSION`); all must be future-invariant.
+- **Literal TTM squeeze (h003, Carter):** `incept_ttm_squeeze` (Bollinger-14 inside Keltner-14×ATR =
+  compression on/off) + `incept_squeeze_bars` (duration in compression) computed PIT from the price
+  series. `incept_vcp_ratio_63` is the current fallback proxy but is not Bollinger-in-Keltner.
+- **Beta-normalized adaptive RS (h005, Caruso):** `incept_adaptive_rs` = alpha from a rolling
+  regression of stock vs benchmark returns (actual − beta×index), volatility-adjusted — Caruso's CARS.
+  The current `incept_rs_composite` is raw 40/20/20/20 return; the DIVERGENCE between the two is itself
+  a test, so keep both.
+- **Group / industry leadership (h004, h006 — Tanner, Webster):** `incept_group_rs` = median RS of the
+  ticker's PIT industry/sector cohort at inception (leading-group tell). Gated on PIT sector history
+  (PHASE0_GICS_VINTAGE_PRECOMMIT.md) — currently a covariate, not a gate, in both hypotheses.
+- **Breakout-bar volume expansion (h002, h004 — the Minervini/Tanner "dry pivot" tension):** distinguish
+  DRY base volume (pre-pivot, at the trough) from EXPANSION volume ON the breakout bar. Add a
+  breakout-anchored `vol_vs_avg` at the point-of-strength entry (ties into the §12.2 trough-vs-breakout
+  anchor), so "volume dries up into the pivot, then surges on the breakout" is testable as one signature.
