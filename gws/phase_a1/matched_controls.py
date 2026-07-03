@@ -43,10 +43,24 @@ def build_matched_controls(setups: pd.DataFrame, pool: pd.DataFrame, match_cols:
             rec["matched_setup_id"] = sid
             out.append(rec)
 
+    controls = pd.DataFrame(out)
     diag = {
         "mean_effective_pool": float(np.mean(eff_sizes)) if eff_sizes else 0.0,
         "min_effective_pool": int(np.min(eff_sizes)) if eff_sizes else 0,
         "n_setups_with_empty_pool": empty,
         "n_match_cols": len(match_cols),
     }
-    return pd.DataFrame(out), diag
+    # DELISTED-SHARE diagnostic (review M-5 / GICS pre-commit): survivor-tilted controls are the
+    # silent killer — dead names with NULL/stale sector classification fall out of sector-matched
+    # pools, so a case-vs-control contrast partially measures survivorship. Surface the share so
+    # it's visible. Requires an `is_delisted` column on both frames; fail loudly if absent when
+    # a classification (sector/industry) column is being matched on.
+    matches_classification = any(c in ("sector", "industry", "gics", "gics_name") for c in match_cols)
+    if "is_delisted" in pool.columns and "is_delisted" in setups.columns:
+        diag["delisted_share_controls"] = (float(controls["is_delisted"].mean())
+                                           if len(controls) and "is_delisted" in controls else float("nan"))
+        diag["delisted_share_cases"] = float(setups["is_delisted"].mean())
+    elif matches_classification:
+        raise ValueError("matched_controls: matching on a classification column requires an "
+                         "is_delisted column on both frames to expose survivorship tilt (M-5).")
+    return controls, diag

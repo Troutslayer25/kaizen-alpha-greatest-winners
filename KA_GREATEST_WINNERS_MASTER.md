@@ -213,6 +213,14 @@ full grid**; multi-target = a primary target + robustness labels, not co-equal d
 implementation (timestamp = proof); reused production code tier-classified A/B/C in
 `code_provenance`; hypotheses sealed until B3.
 
+**DISCOVERY-AGENT DIRECTIVE (review M-6):** the sealed-hypothesis plaintexts under
+`research/hypotheses/` are BLINDING material, not just tamper-proofing. Any Claude agent or human
+doing discovery work (Phases 0–A4) MUST NOT open, grep, or ingest those files — reading one
+contaminates that session for discovery (priors would steer feature/finding selection). Only the
+IDs + SHA-256 hashes in `research/hypothesis_commitments.md` are safe to read before B3. **Action
+for Scott:** move the plaintexts to an encrypted / out-of-agent-context archive until B3; keep only
+IDs + hashes in the tree.
+
 ---
 
 ## 12. Pre-committed early experiments (go/no-go, run at the pilot / early A1–A3, BEFORE full compute)

@@ -23,7 +23,10 @@ import numpy as np
 import pandas as pd
 
 MAG = "total_pct_gain"
-DECISION = "peak_date"
+# The move's DECISION date is when its trailing stop FIRED (resolution), not its peak — magnitude
+# and even the peak's finality are unknowable until then (review C-2). Keying on peak_date lets a
+# then-open peer's later peak mutate an early move's comparison set across a fold boundary.
+DECISION = "resolved_date"
 
 
 def frozen_train_pctile(df: pd.DataFrame, train_mask, magnitude_col: str = MAG) -> pd.Series:
@@ -90,19 +93,28 @@ def expanding_pctile(df: pd.DataFrame, magnitude_col: str = MAG,
 
 def assign(df: pd.DataFrame, mode: str, *, train_mask=None, train_end=None,
            magnitude_col: str = MAG, decision_col: str = DECISION):
-    """Return (pctile: Series, basis: Series) for the gws.moves writer.
+    """Return (pctile: Series, basis: Series) for the gws.moves writer, aligned to df.index.
 
     mode='frozen_train' needs train_mask OR train_end (decision_col <= train_end).
-    mode='expanding' needs neither. 'full_sample' is intentionally unsupported."""
+    mode='expanding' needs neither. 'full_sample' is intentionally unsupported.
+
+    OPEN moves (unresolved, no resolution date) get NaN percentile and never enter any peer's
+    comparison set (review C-2): their magnitude isn't final, so they can't rank or be ranked."""
+    resolved = df["is_open"].to_numpy() == False if "is_open" in df.columns \
+        else np.ones(len(df), dtype=bool)                                    # noqa: E712
+    sub = df[resolved]
+    pct = pd.Series(np.nan, index=df.index)
     if mode == "frozen_train":
         if train_mask is None:
             if train_end is None:
                 raise ValueError("frozen_train needs train_mask or train_end")
-            train_mask = df[decision_col] <= train_end
-        pct = frozen_train_pctile(df, train_mask, magnitude_col)
+            train_mask = sub[decision_col] <= train_end
+        else:
+            train_mask = pd.Series(train_mask, index=df.index)[resolved]
+        pct.loc[sub.index] = frozen_train_pctile(sub, train_mask, magnitude_col)
         tag = f"frozen_train:{train_end}" if train_end is not None else "frozen_train"
     elif mode == "expanding":
-        pct = expanding_pctile(df, magnitude_col, decision_col)
+        pct.loc[sub.index] = expanding_pctile(sub, magnitude_col, decision_col)
         tag = "expanding"
     else:
         raise ValueError(f"unsupported significance mode {mode!r} "

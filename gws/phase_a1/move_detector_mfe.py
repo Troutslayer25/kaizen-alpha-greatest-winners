@@ -56,6 +56,10 @@ class MoveMFE:
     trail_atr: float          # the scale this move was detected at
     scale: str
     is_open: bool
+    resolved_idx: int | None = None   # bar where the trailing stop FIRED (the move became final);
+                                      # None while is_open. This — NOT peak_idx — is the move's
+                                      # decision date: magnitude/peak are knowable only here, so
+                                      # significance percentiles must be keyed on it (review C-2).
 
 
 def _path_smoothness(seg) -> float:
@@ -64,7 +68,7 @@ def _path_smoothness(seg) -> float:
     return float(net / path) if path > 0 else 0.0
 
 
-def _record(close, trough_idx, peak_idx, trail_atr, scale, is_open) -> MoveMFE:
+def _record(close, trough_idx, peak_idx, trail_atr, scale, is_open, resolved_idx=None) -> MoveMFE:
     seg = close[trough_idx : peak_idx + 1]
     s = seg[0]
     pk = close[peak_idx]
@@ -83,6 +87,7 @@ def _record(close, trough_idx, peak_idx, trail_atr, scale, is_open) -> MoveMFE:
         magnitude=float(pk / s - 1.0), duration_days=int(peak_idx - trough_idx),
         mae=mae, smoothness=float(smoothness), early_smoothness=early_smoothness,
         drawdown_timing=drawdown_timing, trail_atr=float(trail_atr), scale=scale, is_open=is_open,
+        resolved_idx=resolved_idx,
     )
 
 
@@ -114,11 +119,11 @@ def detect_moves_mfe(high, low, close, *, atr_period: int = 21, trail_atr: float
             continue
         if close[i] < peak - trail_atr * a:             # trailing stop hit — move tops at peak
             if peak_idx - start_idx >= min_duration and peak > s:
-                moves.append(_record(close, start_idx, peak_idx, trail_atr, scale, False))
+                moves.append(_record(close, start_idx, peak_idx, trail_atr, scale, False, resolved_idx=i))
             start_idx = i; peak = close[i]; peak_idx = i
 
     if peak > close[start_idx] and peak_idx - start_idx >= min_duration:
-        moves.append(_record(close, start_idx, peak_idx, trail_atr, scale, True))
+        moves.append(_record(close, start_idx, peak_idx, trail_atr, scale, True))  # open: unresolved
     return moves
 
 

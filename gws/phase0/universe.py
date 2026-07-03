@@ -25,13 +25,14 @@ def member_flags(dates, intervals) -> np.ndarray:
 
 
 def build_eligibility(dates, close, volume, intervals, *, min_price=MIN_PRICE,
-                      min_history=MIN_HISTORY, adv_window=50, entity_excluded=False):
+                      min_history=MIN_HISTORY, adv_window=50, entity_excluded=False, unlock=False):
     """Return one eligibility dict per date. `intervals` are this ticker's index-membership runs.
     adv_50d / dollar_volume_50d are RECORDED (features), never gates.
 
     `entity_excluded` (review C2): pass True when the entity carries a whole-entity exclusion
     (gws.phase0.exclusions.excluded_ids) — every date is then ineligible, so a stale-adjustment /
     unfetchable name cannot silently remain in the universe."""
+    from gws.phase0.lockbox import in_lockbox           # lazy (review C-1)
     dates = list(dates)
     close = np.asarray(close, float)
     volume = np.asarray(volume, float)
@@ -39,6 +40,8 @@ def build_eligibility(dates, close, volume, intervals, *, min_price=MIN_PRICE,
     member = member_flags(dates, intervals)
     rows = []
     for i, d in enumerate(dates):
+        # sealed holdout: never eligible until the lockbox is explicitly opened (review C-1)
+        locked = (not unlock) and in_lockbox(d)
         data_valid = bool(np.isfinite(close[i]) and close[i] > 0 and np.isfinite(volume[i]) and volume[i] > 0)
         above_min = bool(close[i] >= min_price)
         has_history = i >= min_history - 1
@@ -50,7 +53,8 @@ def build_eligibility(dates, close, volume, intervals, *, min_price=MIN_PRICE,
             "index_member": bool(member[i]),
             "data_valid": data_valid,
             "above_min_price": above_min,
-            "eligible": bool(not entity_excluded and member[i] and data_valid and above_min and has_history),
+            "eligible": bool(not locked and not entity_excluded and member[i]
+                              and data_valid and above_min and has_history),
             "adv_50d": adv,
             "dollar_volume_50d": dvol,
         })

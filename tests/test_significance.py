@@ -6,9 +6,11 @@ import pytest
 from gws.phase_a1.significance import assign, expanding_pctile, frozen_train_pctile
 
 
-def _moves(mags, dates):
-    return pd.DataFrame({"total_pct_gain": mags,
-                         "peak_date": pd.to_datetime(dates)})
+def _moves(mags, dates, is_open=None):
+    d = {"total_pct_gain": mags, "resolved_date": pd.to_datetime(dates)}
+    if is_open is not None:
+        d["is_open"] = is_open
+    return pd.DataFrame(d)
 
 
 def test_expanding_pctile_is_invariant_to_future_moves():
@@ -33,7 +35,7 @@ def test_expanding_pctile_first_move_is_top_of_its_own_world():
 
 def test_frozen_train_ranks_all_against_train_block_only():
     df = _moves([1.0, 2.0, 3.0, 100.0], ["1990-01-01", "1990-02-01", "2021-01-01", "2021-02-01"])
-    train_mask = df["peak_date"] <= pd.Timestamp("2000-01-01")   # first two moves only
+    train_mask = df["resolved_date"] <= pd.Timestamp("2000-01-01")   # first two moves only
     p = frozen_train_pctile(df, train_mask)
     # train ECDF is {1.0, 2.0}; a 2021 mega-move maps to 100th pctile of that frozen block,
     # and crucially the frozen edges do NOT shift because 2021 exists.
@@ -54,3 +56,15 @@ def test_assign_stamps_basis_provenance():
     assert (basis == "expanding").all()
     _, basis2 = assign(df, "frozen_train", train_end=pd.Timestamp("2000-12-31"))
     assert basis2.iloc[0].startswith("frozen_train:")
+
+
+def test_open_moves_get_nan_and_do_not_pollute_peers():
+    # C-2: an unresolved (open) move has no final magnitude — NaN percentile, and it must not
+    # enter a resolved peer's comparison set.
+    df = _moves([0.5, 9.9, 0.7],
+                ["2001-01-01", "2001-02-01", "2001-03-01"],
+                is_open=[False, True, False])
+    pct, _ = assign(df, "expanding")
+    assert np.isnan(pct.iloc[1])                          # the open move: NaN
+    # the third move ranks only against the first resolved move (not the 9.9 open one)
+    assert pct.iloc[2] == pytest.approx(1.0)

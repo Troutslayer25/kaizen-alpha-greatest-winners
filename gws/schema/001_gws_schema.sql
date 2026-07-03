@@ -35,7 +35,7 @@ CREATE INDEX IF NOT EXISTS ix_index_membership_entity ON gws.index_membership (e
 -- here and are joined by entity_id against ka_history only.
 CREATE TABLE IF NOT EXISTS gws.entity_ticker_map (
   entity_id    BIGINT  NOT NULL PRIMARY KEY,   -- ka_history.entities.entity_id (Norgate assetid)
-  ticker_id    INTEGER NOT NULL,               -- public.tickers.id (FMP domain)
+  ticker_id    BIGINT NOT NULL,               -- public.tickers.id (FMP domain)
   match_method TEXT    NOT NULL,               -- 'assetid_symbol' | 'manual' | ...
   confidence   NUMERIC,                        -- 0..1 (symbol-recycling ambiguity)
   created_at   TIMESTAMPTZ DEFAULT now()
@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS gws.liquidity_floors (
 -- v2: eligible = index_member AND data_valid AND above_min_price AND 252-day history.
 -- NO institutional ADV liquidity gate — liquidity is a recorded feature, not a filter.
 CREATE TABLE IF NOT EXISTS gws.universe_eligibility (
-  ticker_id          INTEGER NOT NULL,
+  ticker_id          BIGINT NOT NULL,
   date               DATE    NOT NULL,
   eligible           BOOLEAN NOT NULL,
   index_member       BOOLEAN NOT NULL,      -- Layer 1: quality filter (index membership)
@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS gws.universe_eligibility (
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS gws.observations (
   observation_id  BIGSERIAL PRIMARY KEY,
-  ticker_id       INTEGER NOT NULL,
+  ticker_id       BIGINT NOT NULL,
   as_of_date      DATE    NOT NULL,
   obs_type        TEXT    NOT NULL,         -- 'setup_trough' | 'matched_control' | 'sampled_point'
   linked_move_id  INTEGER,                   -- the move this observation derives from, if any
@@ -116,9 +116,17 @@ CREATE INDEX IF NOT EXISTS ix_observations_tickerdate ON gws.observations (ticke
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS gws.moves (
   move_id            SERIAL PRIMARY KEY,
-  ticker_id          INTEGER NOT NULL,
+  -- ID DOMAIN (review C1): the study RULE is single-domain — `ticker_id` holds the Norgate
+  -- entity_id (= assetid) everywhere; FMP `tickers.id` is strictly QC / cross-check and is NEVER
+  -- persisted here. `id_domain` is a belt-and-suspenders discriminator IN the natural key so that,
+  -- even if that rule is ever violated, an FMP-domain persist can never DELETE a Norgate catalog.
+  -- ticker_id is BIGINT because Norgate assetids can exceed 2^31-1.
+  id_domain          TEXT    NOT NULL DEFAULT 'norgate',
+  ticker_id          BIGINT  NOT NULL,
   start_date         DATE    NOT NULL,       -- trough — feature extraction anchor
   peak_date          DATE    NOT NULL,       -- never used in feature extraction
+  resolved_date      DATE,                    -- stop-fire (resolution) date; NULL if is_open. The move's
+                                             -- DECISION date for significance percentiles (review C-2), NOT peak_date.
   total_pct_gain     NUMERIC NOT NULL,       -- clustering dim 1: magnitude  (MoveMFE.magnitude)
   duration_days      INTEGER NOT NULL,       -- clustering dim 2: duration
   smoothness_metric  NUMERIC,                -- clustering dim 3 (uncensored): path efficiency
@@ -145,7 +153,9 @@ CREATE TABLE IF NOT EXISTS gws.moves (
                                              -- move distribution into every training-fold label. Assign it via
                                              -- gws.phase_a1.significance (frozen train-block threshold OR expanding
                                              -- window: rank vs moves decided on/before this move's decision date).
-  pctile_basis       TEXT,                   -- provenance of magnitude_pctile: 'frozen_train:<date>' | 'expanding' (never 'full_sample')
+  pctile_basis       TEXT CONSTRAINT ck_pctile_basis
+                       CHECK (pctile_basis IS NULL OR pctile_basis = 'expanding'
+                              OR pctile_basis LIKE 'frozen_train:%'),   -- 'full_sample' unrepresentable even via raw SQL (CF-3)
   -- Classification catalog (gws.phase_a1.move_characterization). Two JSONB bags so the move
   -- population can be queried in ways not foreseen now WITHOUT a schema migration per descriptor:
   --   descriptors : POST-HOC move shape/structure (magnitude, pullbacks, streaks, gaps, volume
@@ -158,7 +168,7 @@ CREATE TABLE IF NOT EXISTS gws.moves (
   inception          JSONB,
   detect_params      JSONB,                  -- {atr_period, min_duration, scales} detection provenance (Lineage m-10)
   run_id             TEXT,                    -- optional detection-run tag (latest-run wins via delete-before-insert)
-  UNIQUE (ticker_id, start_date, scale, detection_system)   -- natural key -> idempotent re-persist
+  UNIQUE (id_domain, ticker_id, start_date, scale, detection_system)   -- natural key -> idempotent re-persist
 );
 CREATE INDEX IF NOT EXISTS ix_moves_descriptors ON gws.moves USING GIN (descriptors);
 CREATE INDEX IF NOT EXISTS ix_moves_inception   ON gws.moves USING GIN (inception);
@@ -204,7 +214,7 @@ CREATE TABLE IF NOT EXISTS gws.cluster_stability (
 CREATE TABLE IF NOT EXISTS gws.matched_controls (
   control_id              SERIAL PRIMARY KEY,
   matched_move_id         INTEGER NOT NULL REFERENCES gws.moves(move_id),
-  ticker_id               INTEGER NOT NULL,
+  ticker_id               BIGINT NOT NULL,
   date                    DATE    NOT NULL,  -- the as_of_date for this control
   match_market_cap_bucket TEXT,
   match_sector            TEXT,
@@ -220,7 +230,7 @@ CREATE INDEX IF NOT EXISTS ix_matched_controls_tickerdate ON gws.matched_control
 -- lead_time_days / linked_move_id are future-derived label metadata and MUST NEVER be features.
 CREATE TABLE IF NOT EXISTS gws.setup_labels (
   label_id         SERIAL PRIMARY KEY,
-  ticker_id        INTEGER NOT NULL,
+  ticker_id        BIGINT NOT NULL,
   date             DATE    NOT NULL,         -- the as_of_date; features measured here
   label            BOOLEAN NOT NULL,         -- positive if a confirmed trough falls within forward_window_k
   forward_window_k INTEGER NOT NULL,
@@ -244,7 +254,7 @@ CREATE TABLE IF NOT EXISTS gws.tradeability_diagnostic (
 -- Long/audit store; a wide matrix is materialized to Parquet for ML (T3).
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS gws.features_price_volume (
-  ticker_id     INTEGER NOT NULL,
+  ticker_id     BIGINT NOT NULL,
   as_of_date    DATE    NOT NULL,
   feature_name  TEXT    NOT NULL,
   feature_value NUMERIC,
@@ -253,7 +263,7 @@ CREATE TABLE IF NOT EXISTS gws.features_price_volume (
 );
 
 CREATE TABLE IF NOT EXISTS gws.features_fundamental (
-  ticker_id      INTEGER NOT NULL,
+  ticker_id      BIGINT NOT NULL,
   as_of_date     DATE    NOT NULL,
   feature_name   TEXT    NOT NULL,
   feature_value  NUMERIC,
@@ -269,7 +279,7 @@ CREATE TABLE IF NOT EXISTS gws.features_fundamental (
 );
 
 CREATE TABLE IF NOT EXISTS gws.features_context (
-  ticker_id     INTEGER NOT NULL,
+  ticker_id     BIGINT NOT NULL,
   as_of_date    DATE    NOT NULL,
   feature_name  TEXT    NOT NULL,
   feature_value NUMERIC,
@@ -303,7 +313,7 @@ CREATE TABLE IF NOT EXISTS gws.feature_catalog (
 CREATE TABLE IF NOT EXISTS gws.entry_candidates (
   entry_id       BIGSERIAL PRIMARY KEY,
   move_id        INTEGER NOT NULL REFERENCES gws.moves(move_id),
-  ticker_id      INTEGER NOT NULL,
+  ticker_id      BIGINT NOT NULL,
   as_of_date     DATE    NOT NULL,            -- the candidate entry date (joins the feature store)
   entry_type     TEXT,                         -- descriptive, post-hoc: 'trough'|'pullback'|'strength'|...
   forward_mfe    NUMERIC,                       -- reward: max favorable excursion from here to peak
@@ -356,7 +366,7 @@ CREATE TABLE IF NOT EXISTS gws.regime_daily (
 -- Scoring outputs (versioned) + experiment registry
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS gws.scores (
-  ticker_id     INTEGER NOT NULL,
+  ticker_id     BIGINT NOT NULL,
   date          DATE    NOT NULL,
   score         NUMERIC,
   score_version TEXT    NOT NULL,             -- 'v1_effect_size'|'v2_elastic_net'|'v2_lightgbm'|'v2_validated'
@@ -392,7 +402,7 @@ CREATE TABLE IF NOT EXISTS gws.code_provenance (
 
 CREATE TABLE IF NOT EXISTS gws.data_quality_exceptions (
   exception_id SERIAL PRIMARY KEY,
-  ticker_id    INTEGER,
+  ticker_id    BIGINT,
   date_from    DATE,
   date_to      DATE,
   issue        TEXT NOT NULL,                 -- 'phantom_zero_adj_close','split_explosion','numeric_overflow', ...

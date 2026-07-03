@@ -8,9 +8,13 @@ document freezes how the three such statistics are computed; the [FORWARD] write
 
 ## 1. `magnitude_pctile` (move significance = the positive-class definition)
 - **Never** the percentile within the full population.
+- The decision date is the **stop-fire RESOLUTION date** (`resolved_date` / `MoveMFE.resolved_idx`),
+  NOT `peak_date` (review C-2): magnitude and the peak's finality are unknowable until the trailing
+  stop fires, and keying on `peak_date` lets a then-open peer's later peak mutate an early move's
+  comparison set across a fold boundary. **Open (unresolved) moves get NaN and never rank or are ranked.**
 - Assign via `gws.phase_a1.significance`:
   - **`expanding`** (default) — rank each move against all moves *resolved on/before its own
-    peak/decision date*. PIT-invariant to later moves (unit-tested).
+    resolution date*. PIT-invariant to later moves and to future bars (unit-tested).
   - **`frozen_train`** — rank against the magnitude ECDF of the pilot / first training block,
     frozen and applied study-wide, when a single stable threshold is wanted.
 - The chosen mode is stamped into `gws.moves.pctile_basis` (`'expanding'` | `'frozen_train:<date>'`);

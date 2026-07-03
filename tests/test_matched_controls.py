@@ -11,6 +11,7 @@ def _pool(seed=0, n=500):
         "as_of_index": rng.integers(0, 1000, n),
         "size_bucket": rng.integers(0, 3, n),
         "sector": rng.integers(0, 4, n),
+        "is_delisted": rng.random(n) < 0.3,          # required when matching on a classification (M-5)
     })
 
 
@@ -25,6 +26,15 @@ def test_controls_share_setup_buckets():
         assert c["size_bucket"] == s["size_bucket"]
         assert c["sector"] == s["sector"]
     assert diag["mean_effective_pool"] > 0
+    assert "delisted_share_controls" in diag and "delisted_share_cases" in diag   # M-5 diagnostic
+
+
+def test_classification_match_without_delisted_flag_raises():
+    import pytest
+    pool = _pool().drop(columns=["is_delisted"])
+    setups = pool.sample(5, random_state=1).reset_index(drop=True)
+    with pytest.raises(ValueError, match="is_delisted"):
+        build_matched_controls(setups, pool, ["sector"])          # survivorship tilt would be invisible
 
 
 def test_overmatching_shrinks_effective_pool():
