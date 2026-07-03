@@ -287,15 +287,22 @@ guidance into an enforced constraint and is itself a researcher-DoF control.
 ---
 
 ## 14. Implementation status
-**[BUILT] (104 tests):** the full method library — indicators, MFE + ATR detectors,
-clustering + stability + resolve + segmentation, labeling, matched controls, feature library +
-generic bank + provenance + matrix + collinearity, univariate, neutralization, mutual info,
-decay, ML bake-off, calibration + decay monitor, findings hierarchy, backtest + capacity,
-Monte Carlo, breadth/context, walk-forward, stats, PIT harness, negative controls, research-
-path FDR, synthetic oracle (clean + adversarial); Norgate ingest scripts (ka-runner).
-**[SCHEMA]:** all `gws` tables + persistence contracts.
-**[FORWARD]:** persistence/orchestration layer; universe builder; fundamental feature builder;
-regime-conditioned + entry-point analysis; scoring/Pass-B assembly; all real-data runs.
+**[BUILT] (~230 tests, hardened over three four-auditor review passes):** the full method library
+— indicators, MFE + ATR detectors, clustering + stability + resolve + segmentation, labeling,
+matched controls, feature library + generic bank + provenance + matrix + collinearity, univariate
+(now ticker-cluster-robust), neutralization (per-date), mutual info, decay, ML bake-off (capped
+SVC), calibration + decay monitor, findings hierarchy (Benjamini–Bogomolov), backtest + capacity
+(per-date deciles), Monte Carlo, breadth/context, walk-forward, stats, PIT harness, negative
+controls (learned null bands), research-path FDR + deflated-Sharpe; **move CLASSIFICATION catalog**
+(rich characterization + PIT inception context + base/stage + queryable JSONB `gws.moves` +
+`MoveQuery` + persistence + audits); **universe-eligibility builder**; **exclusion-consuming
+detector driver**; **entry-point / trough-vs-breakout instrument** (stop-conditioned, §12.2);
+**theme-own-move**; two calibration harnesses (modeled + detector-derived null) + a scaling harness
++ **an end-to-end synthetic integration harness** (recovers a planted signal, null-safe); Norgate
+ingest / adjusted-backfill / sweep / completeness-audit / assert-adjustment-fresh scripts.
+**[SCHEMA]:** all `gws` tables + persistence contracts (moves catalog now populated by the writer).
+**[FORWARD]:** fundamental feature builder; regime-conditioned analysis; scoring/Pass-B assembly;
+the production orchestrator wiring Phase-0→A3 on the workstation; all real-data runs.
 
 **Next real step (blocked on backfill + workstation):** Norgate membership ingest → Phase 0 →
 Gate 0.5 pilot (with the early experiments §12 as the first true test of the regime/invariance
