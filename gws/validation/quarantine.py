@@ -20,10 +20,19 @@ MOVE_OUTCOME_COLUMNS = frozenset({
     "total_pct_gain", "magnitude", "mfe", "mae", "max_intra_drawdown",
     "peak_date", "duration_days", "magnitude_pctile", "pctile_basis",
     "lead_time_days", "linked_move_id", "trough_idx", "peak_idx", "is_open",
+    # gws.moves TYPED outcome columns (distinct from the bare characterization field names)
+    "smoothness_metric", "early_smoothness", "drawdown_timing",
 }) | set(DESCRIPTOR_FIELDS)
-# Substrings that betray an outcome even inside a longer feature name.
-_OUTCOME_TOKENS = ("total_pct_gain", "magnitude", "_mfe", "mfe_", "_mae", "mae_",
-                   "peak_date", "lead_time", "linked_move", "pctile")
+# Descriptor stems that are ALSO legitimate A2 feature stems (features carry a _<lookback>
+# suffix, descriptors are bare) — excluded from the substring tokens so 'vol_trend_21' (a real
+# volume feature) is not false-flagged. The bare descriptor name is still caught by the exact set.
+_A2_FEATURE_COLLISIONS = frozenset({"vol_trend"})
+# Substrings that betray an outcome inside a longer feature name — derived from the DESCRIPTOR_FIELDS
+# stems (review M-4) so a lookback-suffixed outcome (e.g. 'smoothness_metric_20') can't slip past
+# the exact-name set, minus the A2 collisions above.
+_OUTCOME_TOKENS = tuple(sorted(set(
+    ("total_pct_gain", "magnitude", "_mfe", "mfe_", "_mae", "mae_", "peak_date", "lead_time",
+     "linked_move", "pctile") + tuple(f for f in DESCRIPTOR_FIELDS if f not in _A2_FEATURE_COLLISIONS))))
 
 
 def assert_no_outcome_leak(feature_names) -> None:

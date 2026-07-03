@@ -19,6 +19,15 @@ def test_outcome_leak_detector():
         assert_no_outcome_leak(["some_mfe_ratio"])          # embedded outcome token
 
 
+def test_suffixed_descriptor_variants_are_caught():
+    # M-4: a lookback-suffixed outcome name must not slip past (tokens derived from stems).
+    with pytest.raises(AssertionError):
+        assert_no_outcome_leak(["smoothness_metric_20"])
+    with pytest.raises(AssertionError):
+        assert_no_outcome_leak(["drawdown_timing_63"])
+    assert_no_outcome_leak(["vol_trend_21"])                # but a real volume FEATURE still passes
+
+
 def test_every_descriptor_field_is_quarantined():
     # F1: the blocklist is derived from DESCRIPTOR_FIELDS, so EVERY current+future descriptor is
     # caught if a feature writer tries to register it.

@@ -34,7 +34,10 @@ def magnitude_consistency_violations(rows, tol: float = 1e-6):
         desc = r.get("descriptors")
         desc = json.loads(desc) if isinstance(desc, str) else (desc or {})
         m = desc.get("magnitude")
-        if m is not None and r.get("total_pct_gain") is not None and abs(m - r["total_pct_gain"]) > tol:
+        g = r.get("total_pct_gain")
+        # psycopg3 returns NUMERIC as decimal.Decimal; the JSONB magnitude is a float. float(...)
+        # both so a Decimal-minus-float TypeError can't crash the audit on real rows (review M1).
+        if m is not None and g is not None and abs(float(m) - float(g)) > tol:
             bad.append(r)
     return bad
 

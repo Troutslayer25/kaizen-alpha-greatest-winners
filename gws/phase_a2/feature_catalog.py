@@ -76,6 +76,45 @@ def _prefix(feature_name: str) -> str:
     return parts[0] if len(parts) == 2 and parts[1].isdigit() else feature_name
 
 
+# FROZEN FDR family map (review M-1) — the authoritative, code-enforced version of the prose in
+# phases/PHASE_A2_PRECOMMIT.md. feature stem -> family. This is the ONLY sanctioned grouping for
+# hierarchical_fdr; a silent regroup (worth ~10x in promotion odds) now diffs in git.
+FROZEN_FAMILIES = {
+    "atr_pct": "volatility", "ret_std": "volatility",
+    "dist_from_high": "location", "dist_from_low": "location", "range_position": "location",
+    "price_to_ma": "moving_average", "ma_compression": "moving_average",
+    "vol_ratio": "volume", "vol_surge": "volume", "vol_trend": "volume", "updown_vol": "volume",
+    "accum_vol_share": "volume", "up_vs_down_vol_extreme": "volume", "cmf": "volume",
+    "base_depth": "base_structure", "vol_contraction": "base_structure",
+    "tight_days_share": "base_structure", "range_tightness": "base_structure",
+    "rel_strength": "relative_strength", "rs_line_slope": "relative_strength", "rs_at_high": "relative_strength",
+    "sector_rs": "group_strength", "sector_rs_slope": "group_strength", "group_strength": "group_strength",
+}
+GENERIC_FAMILY = "generic"
+
+
+def family_of(feature_name: str) -> str | None:
+    """Frozen family for a feature (None if unmapped). Generic-bank features are one `generic` family."""
+    pre = _prefix(feature_name)
+    if pre in GENERIC_PREFIXES:
+        return GENERIC_FAMILY
+    return FROZEN_FAMILIES.get(pre)
+
+
+def build_families(feature_pvalues: dict) -> dict:
+    """Group {feature_name: pvalue} into the frozen family map for hierarchical_fdr — the ONLY
+    sanctioned constructor (review M-1). RAISES on an unmapped feature so a member cannot be
+    regrouped into a friendlier family in an analysis script without a committed change here."""
+    fams: dict = {}
+    for feat, p in feature_pvalues.items():
+        fam = family_of(feat)
+        if fam is None:
+            raise ValueError(f"feature '{feat}' has no frozen family — add it to FROZEN_FAMILIES "
+                             f"(and PHASE_A2_PRECOMMIT.md) before FDR; no ad-hoc regrouping")
+        fams.setdefault(fam, []).append(p)
+    return fams
+
+
 def motivation_for(feature_name: str, *, branch: str = "price_volume") -> str:
     """Return the motivation tag for a feature. Generic-bank features are
     'auto_generated' (by branch or by auto-detected prefix); Branch-1 families map via

@@ -13,7 +13,7 @@ def test_univariate_screen_separates_signal_from_null():
     null = rng.normal(0.0, 1.0, n)
     fm = pd.DataFrame({"signal": signal, "null": null})
 
-    res = univariate_screen(fm, labels)
+    res = univariate_screen(fm, labels, iid_ok=True)
     sig = res[res["feature"] == "signal"].iloc[0]
     nul = res[res["feature"] == "null"].iloc[0]
     assert sig["significant"] and sig["qvalue"] < 0.05
@@ -27,7 +27,7 @@ def test_univariate_fdr_controls_false_positives():
     n = 300
     labels = np.array([1] * 150 + [0] * 150)
     fm = pd.DataFrame({f"f{i}": rng.normal(0, 1, n) for i in range(50)})
-    res = univariate_screen(fm, labels)
+    res = univariate_screen(fm, labels, iid_ok=True)
     assert res["significant"].sum() <= 2          # FDR keeps false positives near zero
 
 

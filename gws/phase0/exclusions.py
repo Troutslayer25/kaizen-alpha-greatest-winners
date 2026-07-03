@@ -47,6 +47,19 @@ def forward_fill_excluded(values, mask) -> np.ndarray:
     return v
 
 
+def excluded_ids(conn, *, sources, resolution="excluded") -> set:
+    """IDs excluded at the WHOLE-ENTITY level — exception rows with NULL date_from (e.g.
+    norgate_unfetchable, stale-adjustment via assert_adjustment_fresh --exclude). `load_exception_spans`
+    filters these out (it needs a date range), so nothing consumed them — the adjustment gate's
+    containment path was dead (review C2). Detection and the universe builder must consult this so a
+    tagged entity produces zero moves and is marked ineligible."""
+    rows = conn.execute(
+        "SELECT DISTINCT ticker_id FROM gws.data_quality_exceptions "
+        "WHERE source = ANY(%s) AND resolution=%s AND date_from IS NULL",
+        (list(sources), resolution)).fetchall()
+    return {r["ticker_id"] for r in rows}
+
+
 def load_exception_spans(conn, ticker_id, *, sources, resolution="excluded"):
     """Load (date_from, date_to) exception spans for one id from gws.data_quality_exceptions.
 

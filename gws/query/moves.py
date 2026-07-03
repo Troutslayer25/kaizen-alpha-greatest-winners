@@ -70,6 +70,9 @@ class MoveQuery:
         return self
 
     def cluster(self, cluster_id):
+        # cluster_id is fit on post-hoc move shape (magnitude/duration/path), so filtering by it is
+        # outcome selection exactly like .descriptor() (PHASE_A1_PRECOMMIT §3) — set the tripwire.
+        self.uses_outcome_filters = True
         self._where.append("cluster_id = %s"); self._params.append(cluster_id); return self
 
     def regime(self, label):

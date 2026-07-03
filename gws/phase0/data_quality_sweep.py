@@ -59,7 +59,13 @@ def scan_series(dates, close, adjusted_close, volume, *, action_dates=None) -> d
     adj_ret, raw_ret = _log_returns(adj), _log_returns(close)
     splice = np.isfinite(adj_ret) & np.isfinite(raw_ret) & (np.abs(adj_ret - raw_ret) > SPLICE_TOL)
     if action_dates:
-        near = np.array([_near_action(d, action_dates, dates) for d in dates])
+        # near = within ACTION_WINDOW index positions of any action date. O(n + actions*window)
+        # via one pass, not O(n^2) list.index per date (review M4: 1.76s -> 0.003s per entity).
+        near = np.zeros(len(dates), dtype=bool)
+        aset = set(action_dates)
+        for p, d in enumerate(dates):
+            if d in aset:
+                near[max(0, p - ACTION_WINDOW): p + ACTION_WINDOW + 1] = True
         splice = splice & ~near
 
     return {
@@ -67,16 +73,6 @@ def scan_series(dates, close, adjusted_close, volume, *, action_dates=None) -> d
         "split_explosion": contiguous_spans(dates, explosion.tolist()),
         "adjustment_splice": contiguous_spans(dates, splice.tolist()),
     }
-
-
-def _near_action(d, action_dates, all_dates):
-    # True if d is within ACTION_WINDOW *index* positions of any action date present in the series
-    try:
-        i = all_dates.index(d)
-    except ValueError:
-        return False
-    lo = max(0, i - ACTION_WINDOW); hi = min(len(all_dates), i + ACTION_WINDOW + 1)
-    return any(all_dates[j] in action_dates for j in range(lo, hi))
 
 
 def sweep_source(conn, source: str, *, dry_run: bool) -> int:

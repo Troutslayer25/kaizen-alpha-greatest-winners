@@ -11,7 +11,7 @@ from gws.validation.null_calibration import make_iid_panel, make_null_panel, run
 
 
 def _naive(fm, labels, tickers):
-    return univariate_screen(fm, labels)
+    return univariate_screen(fm, labels, iid_ok=True)
 
 
 def _clustered(fm, labels, tickers):

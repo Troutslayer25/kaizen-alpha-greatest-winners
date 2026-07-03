@@ -38,6 +38,16 @@ def test_penny_and_untraded_bars_fail_data_validity():
     assert not rows[261]["data_valid"] and not rows[261]["eligible"]
 
 
+def test_whole_entity_exclusion_makes_all_dates_ineligible():
+    # C2: a stale-adjustment / unfetchable entity must be ineligible everywhere, even though its
+    # bars look clean and it's a member.
+    n = 300
+    d = _dates(n)
+    rows = build_eligibility(d, np.full(n, 50.0), np.full(n, 1e6), [(d[0], None)], entity_excluded=True)
+    assert not any(r["eligible"] for r in rows)
+    assert all(r["index_member"] and r["data_valid"] for r in rows)
+
+
 def test_non_member_is_ineligible_even_if_clean():
     n = 300
     d = _dates(n)

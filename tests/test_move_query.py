@@ -35,6 +35,7 @@ def test_outcome_filter_tripwire():
     assert MoveQuery().above_ma(200).inception("incept_rsi_14", "<", 30).uses_outcome_filters is False
     assert MoveQuery().descriptor("num_pullbacks", "<=", 1).uses_outcome_filters is True
     assert MoveQuery().magnitude_between(1.0, None).uses_outcome_filters is True
+    assert MoveQuery().cluster(3).uses_outcome_filters is True     # M-4: cluster_id is post-hoc shape
 
 
 def test_has_missing_make_availability_explicit():

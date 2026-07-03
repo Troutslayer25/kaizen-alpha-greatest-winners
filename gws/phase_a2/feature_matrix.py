@@ -75,6 +75,13 @@ def build_feature_matrix(points: pd.DataFrame, series_by_ticker: dict, *,
     `n_jobs` > 1 (or -1 for all cores) fans the per-ticker work out across a process pool;
     the result is identical to the serial build. `dtype` controls the output precision
     (float32 by default to halve memory at full-universe scale)."""
+    # Duplicate index labels would collapse the label->features dict and silently assign one
+    # ticker's features to another's rows (the natural pd.concat(setups, controls) shape produces
+    # duplicate RangeIndex labels) — plausible-garbage ML input, the study's nightmare class
+    # (review M2). Fail closed.
+    if not points.index.is_unique:
+        raise ValueError("build_feature_matrix: points.index must be unique — duplicate labels "
+                         "would mis-assign features across rows; reset_index(drop=True) first")
     # group point positions by ticker (preserving each point's original index label)
     by_ticker: dict = {}
     for lab, tk, idx in zip(points.index, points["ticker_id"], points["as_of_index"]):
@@ -97,4 +104,8 @@ def build_feature_matrix(points: pd.DataFrame, series_by_ticker: dict, *,
     feats_by_label = {lab: feats for chunk in results for lab, feats in chunk}
     recs = [feats_by_label[lab] for lab in points.index]
     df = pd.DataFrame(recs, index=points.index)
+    # Standing quarantine at the choke point (review M-4): no move-outcome column may enter the
+    # feature matrix. A leaked descriptor here would be trained on the move's own future.
+    from gws.validation.quarantine import assert_no_outcome_leak
+    assert_no_outcome_leak(df.columns)
     return df.astype(dtype) if dtype is not None else df

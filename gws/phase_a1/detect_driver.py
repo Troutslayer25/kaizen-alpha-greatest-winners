@@ -37,11 +37,16 @@ def detect_moves_clean(high, low, close, volume, dates, exception_spans=(), *,
     lo = forward_fill_excluded(low, mask)
 
     if not mask.any():                                   # nothing tradeable — no moves
-        return list(dates), c, h, lo, volume, {f"trail_{k:g}": [] for k in scales}
+        # key by the SAME float scale as detect_moves_multiscale (review m1): the empty path
+        # must not return string keys the callers (which do by_scale[6.0]) can't find.
+        return list(dates), c, h, lo, volume, {k: [] for k in scales}
     start = int(np.argmax(mask))                         # first tradeable+finite bar
     d = list(dates)[start:]
     c, h, lo, vol = c[start:], h[start:], lo[start:], volume[start:]
-    assert np.isfinite(c).all() and (c > 0).all(), "cleaned close must be finite and > 0 for detection"
+    # explicit raise (not assert — survives python -O; review m3): a ~0 close would seed an
+    # infinite-magnitude move. The orchestrator must catch this per-ticker, not die the whole run.
+    if not (np.isfinite(c).all() and (c > 0).all()):
+        raise ValueError("cleaned close must be finite and > 0 for detection (unmasked phantom-zero?)")
     by_scale = detect_moves_multiscale(h, lo, c, scales=scales, atr_period=atr_period,
                                        min_duration=min_duration)
     return d, c, h, lo, vol, by_scale
@@ -53,12 +58,15 @@ def detect_moves_for_ticker(conn, ticker_id, *, source: str = "fmp",
     cleaned series. Returns (dates_c, close_c, high_c, low_c, volume_c, {trail_atr: [MoveMFE]}) —
     the cleaned arrays feed persistence so descriptors match what the detector saw. `source`
     selects both the price table AND the exclusion ID domain (review C-1)."""
-    from gws.phase0.exclusions import load_exception_spans  # lazy
+    from gws.phase0.exclusions import excluded_ids, load_exception_spans  # lazy
     if source == "fmp":
         table, key, span_sources = "public.eod_prices", "ticker_id", ["fmp", "completeness_audit"]
     else:
         table, key, span_sources = ("ka_history.eod_history", "entity_id",
                                     ["norgate", "backfill_norgate_adjusted", "assert_adjustment_fresh"])
+    # whole-entity exclusion (stale-adjustment / unfetchable): emit zero moves (review C2)
+    if ticker_id in excluded_ids(conn, sources=span_sources):
+        return [], np.array([]), np.array([]), np.array([]), np.array([]), {k: [] for k in scales}
     rows = conn.execute(
         f"SELECT date, high, low, adjusted_close AS close, volume FROM {table} "
         f"WHERE {key}=%s AND adjusted_close IS NOT NULL ORDER BY date", (ticker_id,)).fetchall()

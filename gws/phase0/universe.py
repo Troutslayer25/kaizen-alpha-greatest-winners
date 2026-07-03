@@ -25,12 +25,17 @@ def member_flags(dates, intervals) -> np.ndarray:
 
 
 def build_eligibility(dates, close, volume, intervals, *, min_price=MIN_PRICE,
-                      min_history=MIN_HISTORY, adv_window=50):
+                      min_history=MIN_HISTORY, adv_window=50, entity_excluded=False):
     """Return one eligibility dict per date. `intervals` are this ticker's index-membership runs.
-    adv_50d / dollar_volume_50d are RECORDED (features), never gates."""
+    adv_50d / dollar_volume_50d are RECORDED (features), never gates.
+
+    `entity_excluded` (review C2): pass True when the entity carries a whole-entity exclusion
+    (gws.phase0.exclusions.excluded_ids) — every date is then ineligible, so a stale-adjustment /
+    unfetchable name cannot silently remain in the universe."""
     dates = list(dates)
     close = np.asarray(close, float)
     volume = np.asarray(volume, float)
+    dvol_series = volume * close                         # hoisted (review m7): one multiply, not per-date
     member = member_flags(dates, intervals)
     rows = []
     for i, d in enumerate(dates):
@@ -39,13 +44,13 @@ def build_eligibility(dates, close, volume, intervals, *, min_price=MIN_PRICE,
         has_history = i >= min_history - 1
         lo = max(0, i - adv_window + 1)
         adv = float(np.nanmean(volume[lo:i + 1])) if i >= lo else np.nan
-        dvol = float(np.nanmean((volume * close)[lo:i + 1])) if i >= lo else np.nan
+        dvol = float(np.nanmean(dvol_series[lo:i + 1])) if i >= lo else np.nan
         rows.append({
             "date": d,
             "index_member": bool(member[i]),
             "data_valid": data_valid,
             "above_min_price": above_min,
-            "eligible": bool(member[i] and data_valid and above_min and has_history),
+            "eligible": bool(not entity_excluded and member[i] and data_valid and above_min and has_history),
             "adv_50d": adv,
             "dollar_volume_50d": dvol,
         })

@@ -32,17 +32,22 @@ def _rank_biserial(a, b):
     return 1.0 - 2.0 * u / (len(a) * len(b))
 
 
-def univariate_screen(feature_matrix: pd.DataFrame, labels, *, cluster_ids=None,
+def univariate_screen(feature_matrix: pd.DataFrame, labels, *, cluster_ids=None, iid_ok=False,
                       alpha: float = 0.05, subsample_n: int = 500) -> pd.DataFrame:
     """labels: 1 = setup, 0 = control. Returns one row per feature with the test used,
     raw p-value, BH q-value, significance flag, and effect sizes — sorted by q-value.
 
-    `cluster_ids` (review C-1): when supplied (one id per observation, e.g. ticker_id), the
-    p-value comes from a CLUSTER-ROBUST test that accounts for within-ticker dependence from
-    overlapping multi-scale moves. Effect sizes are unchanged. This is the REQUIRED path for
-    any primary discovery finding; the naive i.i.d. path is retained only for independent-row
-    contexts. Passing labels/features without clusters on the discovery path is the C-1 defect
-    (see gws.validation.null_calibration for the exhibit)."""
+    `cluster_ids` (review C-1) is REQUIRED on the discovery path — one id per observation (e.g.
+    ticker_id) — so the p-value comes from a CLUSTER-ROBUST test that accounts for within-ticker
+    dependence from overlapping multi-scale moves. Forgetting it is a false-positive machine
+    (measured: 100% family-wise FP on hostile nulls). The contract is fail-closed: omitting
+    `cluster_ids` RAISES unless `iid_ok=True` is passed explicitly for a genuinely independent-row
+    context (the null-calibration naive exhibit is the only sanctioned use)."""
+    if cluster_ids is None and not iid_ok:
+        raise ValueError(
+            "univariate_screen: cluster_ids is required on the discovery path (within-ticker "
+            "dependence makes i.i.d. p-values a false-positive machine — review M-3). Pass "
+            "cluster_ids=<ticker ids>, or iid_ok=True only for genuinely independent rows.")
     labels = np.asarray(labels).astype(bool)
     cl = None if cluster_ids is None else np.asarray(cluster_ids)
     rows = []

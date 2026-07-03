@@ -8,6 +8,16 @@ from gws.common.stats import cluster_robust_ttest
 from gws.phase_a1.labeling import build_setup_labels
 
 
+def test_univariate_screen_requires_clusters_on_discovery_path():
+    import pandas as pd
+    from gws.phase_a3.univariate import univariate_screen
+    fm = pd.DataFrame({"f": np.arange(20.0)})
+    y = np.array([0, 1] * 10)
+    with pytest.raises(ValueError, match="cluster_ids is required"):
+        univariate_screen(fm, y)                            # M-3: fail-closed without clusters
+    univariate_screen(fm, y, iid_ok=True)                   # explicit escape hatch is allowed
+
+
 def test_coef_recovers_difference_in_means():
     rng = np.random.default_rng(0)
     x = np.concatenate([rng.normal(1.0, 0.1, 200), rng.normal(0.0, 0.1, 200)])
