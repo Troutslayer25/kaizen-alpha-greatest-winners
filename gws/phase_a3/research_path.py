@@ -114,3 +114,29 @@ def deflated_sharpe_ratio(observed_sr: float, n_obs: int, n_trials: int, *,
     n_eff = effective_n(n_obs, autocorr)
     z = (observed_sr - sr0) * np.sqrt(max(1.0, n_eff - 1.0)) / denom
     return float(norm.cdf(z))
+
+
+def deflated_sharpe_tracked(returns, trial_srs) -> float:
+    """Mechanical DSR (review M-2 enforcement): ALL haircut inputs are DERIVED, never hand-supplied
+    — n_trials = len(trial_srs) (the counted trial set), sr_std = their dispersion, autocorr = the
+    return series' lag-1 serial correlation, observed_sr = mean/std of `returns`, and skew/kurt
+    ESTIMATED from `returns` (defaulting them to 0/3 is anti-conservative for the fat-tailed,
+    negatively-skewed return series this is applied to — review quant). Pass the trial registry's
+    recorded Sharpes so the multiple-testing count cannot be understated. Raises on <2 trials.
+
+    `trial_srs` and the derived `observed_sr` must be in the SAME units (per-observation Sharpe);
+    the registry records per-observation Sharpes by convention."""
+    srs = [x for x in trial_srs if x == x]
+    if len(srs) < 2:
+        raise ValueError("deflated_sharpe_tracked: need >=2 recorded trial Sharpes — register the "
+                         "full search (models x params x sensitivities) before deflating")
+    r = np.asarray([x for x in returns if x == x], float)
+    observed_sr = float(r.mean() / r.std()) if r.size > 1 and r.std() > 0 else 0.0
+    if r.size >= 4 and r.std() > 0:
+        z = (r - r.mean()) / r.std()
+        skew, kurt = float(np.mean(z ** 3)), float(np.mean(z ** 4))
+    else:
+        skew, kurt = 0.0, 3.0
+    return deflated_sharpe_ratio(observed_sr, n_obs=r.size, n_trials=len(srs),
+                                 sr_std=estimate_sr_std(srs), skew=skew, kurt=kurt,
+                                 autocorr=lag1_autocorr(r))

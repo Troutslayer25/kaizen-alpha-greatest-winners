@@ -49,7 +49,7 @@ def test_capped_svc_bounds_training_size():
     rng = np.random.default_rng(4)
     X = rng.normal(0, 1, (600, 3)); y = (X[:, 0] > 0).astype(int)
     m = _CappedSVC(cap=50).fit(X, y)
-    assert int(m._m.n_support_.sum()) <= 50            # trained on <= cap rows
+    assert m.n_train_ <= 50                             # trained on <= cap rows
     assert m.predict_proba(X).shape == (600, 2)
 
 

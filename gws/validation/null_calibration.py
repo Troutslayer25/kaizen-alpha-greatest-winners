@@ -61,6 +61,43 @@ def make_null_panel(n_tickers: int = 60, obs_per_ticker: int = 200, n_features: 
     return fm, labels, tickers
 
 
+def make_detector_null_panel(n_tickers: int = 40, n_days: int = 1200, n_features: int = 15,
+                             seed: int = 0, scales=(2.0, 6.0, 15.0), forward_k: int = 21,
+                             sample_every: int = 5):
+    """A STRONGER null panel whose label dependence comes from the ACTUAL detector, not a modelled
+    block process (review, statistical). Each ticker is a pure random walk (no planted move); the
+    real multi-scale MFE detector finds troughs on it, and points within `forward_k` days of ANY
+    trough (across scales, UNDEDUPED — the real overlapping-move inflation) are labelled positive.
+    Features are drawn INDEPENDENTLY (within-ticker AR(1)), so true association is zero — yet the
+    label structure carries exactly the cross-scale, within-ticker dependence that breaks naive
+    inference. Returns (feature_matrix, labels, ticker_ids)."""
+    from gws.phase_a1.move_detector_mfe import detect_moves_multiscale
+    rng = np.random.default_rng(seed)
+    Xs, ys, tks = [], [], []
+    for g in range(n_tickers):
+        rets = rng.normal(0, 0.012, n_days)
+        close = 100 * np.cumprod(1 + rets)
+        high, low = close * 1.005, close * 0.995
+        by_scale = detect_moves_multiscale(high, low, close, scales=scales)
+        troughs = np.array(sorted(m.trough_idx for ms in by_scale.values() for m in ms), dtype=int)
+        idx = np.arange(252, n_days, sample_every)
+        lab = np.zeros(len(idx), dtype=int)
+        if troughs.size:
+            for j, i in enumerate(idx):
+                ahead = troughs[(troughs > i) & (troughs <= i + forward_k)]
+                lab[j] = int(ahead.size > 0)
+        # independent AR(1) null features
+        scale = np.sqrt(0.19)
+        feat = np.empty((len(idx), n_features))
+        for c in range(n_features):
+            m = rng.normal(0, 1)
+            innov = scale * rng.normal(0, 1, len(idx))
+            feat[:, c] = lfilter([1.0], [1.0, -0.9], innov) + m
+        Xs.append(feat); ys.append(lab); tks.append(np.full(len(idx), g))
+    fm = pd.DataFrame(np.vstack(Xs), columns=[f"f{j}" for j in range(n_features)])
+    return fm, np.concatenate(ys), np.concatenate(tks)
+
+
 def make_iid_panel(n_obs: int = 6000, n_features: int = 20, seed: int = 0, pos_rate: float = 0.3):
     """Fully independent baseline: one observation per 'ticker', i.i.d. features and labels.
     Naive BH is correctly calibrated here — this proves the harness measures real

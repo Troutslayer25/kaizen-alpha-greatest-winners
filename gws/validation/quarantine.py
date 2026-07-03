@@ -11,12 +11,16 @@ comment; this makes it a standing, automated check runnable at every gate:
 """
 from __future__ import annotations
 
-# Forward-derived outcome columns of gws.moves — never legal as features.
+from gws.phase_a1.move_characterization import DESCRIPTOR_FIELDS
+
+# Forward-derived outcome columns of gws.moves — never legal as features. Derived from
+# DESCRIPTOR_FIELDS (review F1) so every current AND future move descriptor is auto-quarantined;
+# the inception_context fields are PIT (data <= trough) and are deliberately NOT here.
 MOVE_OUTCOME_COLUMNS = frozenset({
     "total_pct_gain", "magnitude", "mfe", "mae", "max_intra_drawdown",
     "peak_date", "duration_days", "magnitude_pctile", "pctile_basis",
     "lead_time_days", "linked_move_id", "trough_idx", "peak_idx", "is_open",
-})
+}) | set(DESCRIPTOR_FIELDS)
 # Substrings that betray an outcome even inside a longer feature name.
 _OUTCOME_TOKENS = ("total_pct_gain", "magnitude", "_mfe", "mfe_", "_mae", "mae_",
                    "peak_date", "lead_time", "linked_move", "pctile")
@@ -38,5 +42,6 @@ def module_touches_move_outcomes(module) -> bool:
     """True if a feature module's source references the detector/labeler (it must not)."""
     import inspect
     src = inspect.getsource(module)
-    return any(bad in src for bad in ("move_detector", "trough_detector",
-                                      "phase_a1.labeling", "gws.moves"))
+    return any(bad in src for bad in ("move_detector", "trough_detector", "phase_a1.labeling",
+                                      "gws.moves", "move_characterization", "persist_moves",
+                                      "query.moves", "MoveQuery"))

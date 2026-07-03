@@ -19,6 +19,24 @@ def test_outcome_leak_detector():
         assert_no_outcome_leak(["some_mfe_ratio"])          # embedded outcome token
 
 
+def test_every_descriptor_field_is_quarantined():
+    # F1: the blocklist is derived from DESCRIPTOR_FIELDS, so EVERY current+future descriptor is
+    # caught if a feature writer tries to register it.
+    from gws.phase_a1.move_characterization import DESCRIPTOR_FIELDS
+    for field in DESCRIPTOR_FIELDS:
+        with pytest.raises(AssertionError):
+            assert_no_outcome_leak([field])
+
+
+def test_query_layer_import_is_a_quarantine_tripwire():
+    # F1: a feature module importing the move query layer must be flagged.
+    import types as _t
+    fake = _t.ModuleType("fake_feature_mod")
+    fake.__loading = "from gws.query.moves import MoveQuery\ndef f(): return MoveQuery()"
+    import gws.query.moves as qm
+    assert module_touches_move_outcomes(qm)          # the query module itself trips the check
+
+
 def test_real_feature_functions_emit_no_outcome_columns():
     rng = np.random.default_rng(0)
     close = 100 * np.cumprod(1 + rng.normal(0, 0.01, 300))

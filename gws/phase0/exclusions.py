@@ -47,10 +47,17 @@ def forward_fill_excluded(values, mask) -> np.ndarray:
     return v
 
 
-def load_exception_spans(conn, ticker_id, *, resolution="excluded"):
-    """Load (date_from, date_to) exception spans for one id from gws.data_quality_exceptions."""
+def load_exception_spans(conn, ticker_id, *, sources, resolution="excluded"):
+    """Load (date_from, date_to) exception spans for one id from gws.data_quality_exceptions.
+
+    `sources` (required, review C-1) restricts to the matching ID DOMAIN. The `ticker_id` column
+    holds FMP `tickers.id` for source='fmp'/'completeness_audit' but Norgate `entity_id` for
+    source='norgate'/'backfill_norgate_adjusted' — loading across domains masks the wrong company's
+    bars. The caller passes the sources valid for the id it is detecting on."""
+    if isinstance(sources, str):
+        sources = [sources]
     rows = conn.execute(
         "SELECT date_from, date_to FROM gws.data_quality_exceptions "
-        "WHERE ticker_id=%s AND resolution=%s AND date_from IS NOT NULL ORDER BY date_from",
-        (ticker_id, resolution)).fetchall()
+        "WHERE ticker_id=%s AND source = ANY(%s) AND resolution=%s AND date_from IS NOT NULL "
+        "ORDER BY date_from", (ticker_id, list(sources), resolution)).fetchall()
     return [(r["date_from"], r["date_to"]) for r in rows]

@@ -127,7 +127,9 @@ CREATE TABLE IF NOT EXISTS gws.moves (
   mae                NUMERIC,                -- max adverse excursion below start (recorded, not gated)
   max_intra_drawdown NUMERIC,                -- diagnostic/comparative (drawdown from running peak)
   detection_system   TEXT    NOT NULL,       -- 'mfe' (canonical) | 'atr_swing' | 'absolute_return' (cross-check)
-  scale              TEXT,                   -- MFE multi-scale tag (e.g. 'trail_6'); NULL for non-MFE
+  scale              TEXT    NOT NULL DEFAULT 'none',  -- MFE multi-scale tag (e.g. 'trail_6'); 'none' for non-MFE.
+                                             -- NOT NULL so the UNIQUE natural key below works (Postgres treats
+                                             -- NULLs as distinct, which would defeat ON CONFLICT for non-MFE writers).
   trail_atr          NUMERIC,                -- the trailing-stop ATR multiple this move was detected at
   reversal_threshold NUMERIC,                -- (atr_swing baseline only)
   is_primary_scale   BOOLEAN NOT NULL DEFAULT TRUE,   -- writer sets per the pre-committed primary scale
@@ -143,8 +145,21 @@ CREATE TABLE IF NOT EXISTS gws.moves (
                                              -- move distribution into every training-fold label. Assign it via
                                              -- gws.phase_a1.significance (frozen train-block threshold OR expanding
                                              -- window: rank vs moves decided on/before this move's decision date).
-  pctile_basis       TEXT                    -- provenance of magnitude_pctile: 'frozen_train:<date>' | 'expanding' (never 'full_sample')
+  pctile_basis       TEXT,                   -- provenance of magnitude_pctile: 'frozen_train:<date>' | 'expanding' (never 'full_sample')
+  -- Classification catalog (gws.phase_a1.move_characterization). Two JSONB bags so the move
+  -- population can be queried in ways not foreseen now WITHOUT a schema migration per descriptor:
+  --   descriptors : POST-HOC move shape/structure (magnitude, pullbacks, streaks, gaps, volume
+  --                 profile, pre-move base, RS-during) — outcome data, for classification/query.
+  --   inception   : PIT state AT the trough (price vs MA sweep, dist-from-52w-hi/lo, ATR%, RSI,
+  --                 vol-vs-avg, RS-vs-bench) — forward-invariant, so moves can be sliced by what
+  --                 the tape looked like when they BEGAN ("moves that started above the 200-day MA").
+  -- Query typed: (descriptors->>'num_pullbacks')::numeric, (inception->>'incept_above_sma200')::numeric.
+  descriptors        JSONB,
+  inception          JSONB,
+  UNIQUE (ticker_id, start_date, scale, detection_system)   -- natural key -> idempotent re-persist
 );
+CREATE INDEX IF NOT EXISTS ix_moves_descriptors ON gws.moves USING GIN (descriptors);
+CREATE INDEX IF NOT EXISTS ix_moves_inception   ON gws.moves USING GIN (inception);
 CREATE INDEX IF NOT EXISTS ix_moves_ticker ON gws.moves (ticker_id, start_date);
 
 CREATE TABLE IF NOT EXISTS gws.move_clusters (

@@ -32,19 +32,23 @@ SVM_TRAIN_CAP = 20_000
 
 class _CappedSVC:
     """RBF SVC that trains on at most SVM_TRAIN_CAP rows (deterministic subsample), so the
-    bake-off scales. Scores the full test fold. sklearn-compatible (fit/predict_proba)."""
+    bake-off scales. Scores the full test fold. Probabilities via CalibratedClassifierCV (the
+    replacement for the deprecated SVC(probability=True)). sklearn-compatible (fit/predict_proba)."""
 
     def __init__(self, cap: int = SVM_TRAIN_CAP, **kw):
         self.cap = cap
         self.kw = kw
         self._m = None
+        self.n_train_ = 0
 
     def fit(self, X, y):
+        from sklearn.calibration import CalibratedClassifierCV
         X = np.asarray(X, float); y = np.asarray(y)
         if len(y) > self.cap:
             idx = np.random.default_rng(0).choice(len(y), self.cap, replace=False)
             X, y = X[idx], y[idx]
-        self._m = SVC(probability=True, **self.kw).fit(X, y)
+        self.n_train_ = len(y)
+        self._m = CalibratedClassifierCV(SVC(**self.kw), cv=3, ensemble=False).fit(X, y)
         return self
 
     def predict_proba(self, X):
