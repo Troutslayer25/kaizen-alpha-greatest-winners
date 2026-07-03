@@ -28,7 +28,7 @@ DESCRIPTOR_FIELDS = (
     "magnitude", "log_magnitude", "duration_days", "velocity", "annualized_return",
     # path shape
     "smoothness", "early_smoothness", "late_smoothness", "mae", "max_intra_drawdown",
-    "drawdown_timing",
+    "drawdown_timing", "trend_quality",
     # pullback structure
     "num_pullbacks", "largest_pullback", "mean_pullback",
     # daily-return structure
@@ -50,6 +50,18 @@ def _smoothness(seg):
     net = seg[-1] - seg[0]
     path = float(np.abs(np.diff(seg)).sum())
     return float(net / path) if path > 0 else 0.0
+
+
+def _trend_quality(smoothness, magnitude, duration_days):
+    """A bounded [0,1] 'valid trend' score: orderly (smoothness) AND sustained (duration) AND
+    meaningful (magnitude). Geometric mean of three SATURATING components so no single one
+    dominates and the score stays interpretable — a 2-day 3% blip scores near 0, a smooth
+    6-month advance scores high. Descriptive / queryable / a clustering axis; NOT a discovery
+    feature (it is post-hoc and lives in the outcome bag)."""
+    s = max(0.0, min(1.0, smoothness))                    # path efficiency, already ~[0,1]
+    m = magnitude / (magnitude + 0.5) if magnitude > 0 else 0.0   # +50% -> 0.5, saturating
+    d = duration_days / (duration_days + 63.0)            # ~a quarter -> 0.5, saturating
+    return float((s * m * d) ** (1.0 / 3.0))
 
 
 def _streaks(rets):
@@ -130,6 +142,8 @@ def characterize_move(move, close, high=None, low=None, volume=None, bench_close
         "mae": float(max(0.0, (s - seg.min()) / s)) if s > 0 else np.nan,
         "max_intra_drawdown": float(dd.max()),
         "drawdown_timing": float(np.argmax(dd) / (n - 1)) if n > 1 and dd.max() > 0 else 0.0,
+        "trend_quality": _trend_quality(_smoothness(seg),
+                                        total_gain if total_gain == total_gain else 0.0, pi - ti),
         "num_pullbacks": int(npb),
         "largest_pullback": largest_pb,
         "mean_pullback": mean_pb,

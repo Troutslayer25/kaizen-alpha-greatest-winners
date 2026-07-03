@@ -112,6 +112,11 @@ class MoveQuery:
         self.uses_outcome_filters = True                 # descriptors are post-hoc outcomes
         return self._jsonb("descriptors", field, op, value)
 
+    def min_trend_quality(self, threshold):
+        """Moves with a trend-quality score >= threshold (orderly AND sustained AND meaningful) —
+        the direct 'valid trend, not noise' filter."""
+        return self.descriptor("trend_quality", ">=", threshold)
+
     def inception(self, field, op, value):
         return self._jsonb("inception", field, op, value)
 

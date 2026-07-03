@@ -38,6 +38,13 @@ def test_outcome_filter_tripwire():
     assert MoveQuery().cluster(3).uses_outcome_filters is True     # M-4: cluster_id is post-hoc shape
 
 
+def test_min_trend_quality_filter():
+    q = MoveQuery().min_trend_quality(0.6)
+    sql, params = q.build()
+    assert "(descriptors ->> %s)::numeric >= %s" in sql
+    assert params == ["trend_quality", 0.6] and q.uses_outcome_filters is True
+
+
 def test_has_missing_make_availability_explicit():
     # M-3: NULL semantics — has/missing let the analyst partition instead of silently dropping.
     sql, params = MoveQuery().missing("incept_price_to_sma200").build()

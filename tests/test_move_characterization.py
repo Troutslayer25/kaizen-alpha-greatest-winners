@@ -32,6 +32,15 @@ def test_characterize_emits_all_descriptor_fields():
     assert d["annualized_return"] <= 1e4                       # capped, not 1e15
 
 
+def test_trend_quality_bounded_and_discriminates():
+    import types
+    big = np.linspace(100, 220, 181)              # smooth +120% over 180 bars -> a valid trend
+    qb = characterize_move(types.SimpleNamespace(trough_idx=0, peak_idx=180), big)["trend_quality"]
+    small = np.linspace(100, 103, 3)              # +3% over 2 bars -> noise, not a trend
+    qs = characterize_move(types.SimpleNamespace(trough_idx=0, peak_idx=2), small)["trend_quality"]
+    assert 0.0 <= qs < 0.3 < 0.7 < qb <= 1.0
+
+
 def test_overnight_gaps_from_opens():
     move, close, high, low, vol, bench = _series()
     open_ = close.copy()
