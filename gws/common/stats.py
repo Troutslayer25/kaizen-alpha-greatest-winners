@@ -9,7 +9,7 @@ excluded rather than silently corrupting the result.
 from __future__ import annotations
 
 import numpy as np
-from scipy.stats import false_discovery_control
+from scipy.stats import false_discovery_control, t as _tdist
 
 
 def benjamini_hochberg(pvals, alpha: float = 0.05):
@@ -48,6 +48,49 @@ def cohens_d(a, b) -> float:
     return float((a.mean() - b.mean()) / sp) if sp > 0 else float("nan")
 
 
+def cluster_robust_ttest(x, group, cluster):
+    """Two-sample / slope test with CLUSTER-ROBUST standard errors (review C-1).
+
+    Regresses x on [1, group] and returns (coef, pvalue) for `group`, where the SE clusters
+    on `cluster` (CR1 finite-sample correction, dof = n_clusters - 1). This replaces naive
+    i.i.d. tests on the discovery path: with overlapping multi-scale moves and 5-day-cadence
+    labels sharing K-day windows, rows within a ticker are dependent and pooled p-values are
+    anti-conservative (§13 risk #9). `group` may be a 0/1 setup indicator (coef = difference
+    in means) or continuous (coef = slope). NaN x are dropped. Returns (nan, nan) when
+    unestimable (fewer than 2 clusters, no group variance, singular design)."""
+    x = np.asarray(x, float)
+    g = np.asarray(group, float)
+    cl = np.asarray(cluster)
+    m = ~(np.isnan(x) | np.isnan(g))
+    x, g, cl = x[m], g[m], cl[m]
+    n = x.size
+    _, cl_idx = np.unique(cl, return_inverse=True)
+    G = int(cl_idx.max()) + 1 if n else 0
+    if n < 3 or G < 2 or g.min() == g.max():
+        return float("nan"), float("nan")
+
+    X = np.column_stack([np.ones(n), g])
+    XtX = X.T @ X
+    try:
+        XtX_inv = np.linalg.inv(XtX)
+    except np.linalg.LinAlgError:
+        return float("nan"), float("nan")
+    beta = XtX_inv @ (X.T @ x)
+    u = x - X @ beta
+    score = X * u[:, None]                       # n x 2 per-observation score
+    S = np.zeros((G, 2))
+    np.add.at(S, cl_idx, score)                  # sum scores within cluster (O(n))
+    meat = S.T @ S
+    c = (G / (G - 1)) * ((n - 1) / (n - 2))      # CR1 correction, k=2 params
+    V = c * (XtX_inv @ meat @ XtX_inv)
+    se = float(np.sqrt(V[1, 1])) if V[1, 1] > 0 else float("nan")
+    if not np.isfinite(se) or se <= 0:
+        return float(beta[1]), float("nan")
+    tstat = beta[1] / se
+    p = 2.0 * _tdist.sf(abs(tstat), df=G - 1)
+    return float(beta[1]), float(p)
+
+
 def block_bootstrap_by_ticker(values, tickers, stat_fn=np.mean, n_boot: int = 1000,
                               seed: int = 0, ci: float = 0.95):
     """Bootstrap a statistic by resampling whole tickers (block bootstrap).
@@ -80,3 +123,34 @@ def block_bootstrap_by_ticker(values, tickers, stat_fn=np.mean, n_boot: int = 10
     lo = float(np.quantile(boot, (1 - ci) / 2))
     hi = float(np.quantile(boot, 1 - (1 - ci) / 2))
     return float(stat_fn(values)), (lo, hi)
+
+
+def ticker_multiplier_bootstrap(values, tickers, *, n_boot: int = 1000, seed: int = 0,
+                                ci: float = 0.95):
+    """Ticker-block bootstrap of the MEAN for MANY columns at once (review, compute aspect).
+
+    `values` is (n, k) — one column per feature. Each replicate draws a single vector of
+    ticker resample-counts (multinomial) and reuses it across all k columns as weights, so the
+    whole thing is ~n_boot weighted reductions over an (n, k) matrix instead of k separate
+    index-concatenating loops (memory-bandwidth-infeasible at k=500). Returns (point[k],
+    lo[k], hi[k]) — per-column point estimate and clustered CI."""
+    V = np.asarray(values, float)
+    if V.ndim == 1:
+        V = V[:, None]
+    tickers = np.asarray(tickers)
+    _, group_idx = np.unique(tickers, return_inverse=True)
+    G = int(group_idx.max()) + 1
+    n, k = V.shape
+
+    rng = np.random.default_rng(seed)
+    boot = np.empty((n_boot, k))
+    uniform = np.full(G, 1.0 / G)
+    for b in range(n_boot):
+        counts = rng.multinomial(G, uniform)          # resample G tickers with replacement
+        w = counts[group_idx].astype(float)           # per-row weight (shared across columns)
+        wsum = w.sum()
+        boot[b] = (w @ V) / wsum if wsum > 0 else np.nan
+    lo = np.quantile(boot, (1 - ci) / 2, axis=0)
+    hi = np.quantile(boot, 1 - (1 - ci) / 2, axis=0)
+    point = V.mean(axis=0)
+    return point, lo, hi

@@ -11,34 +11,78 @@ bank by default (`include_generic=True`). Wiring the generic bank in is a bias c
 not an optimization: practitioner-recognizable features must compete against
 framework-neutral descriptors, or the Gate A3->A4 motivation cross-tab is trivially
 all-practitioner (KA_AUDITOR_PROMPTS Auditor 4 §28).
+
+SCALE (review, compute aspect). The old builder iterated points one at a time on a single
+thread — the pipeline's real wall at 1e7 sample points on a 64-thread box. This version groups
+points BY TICKER and computes each ticker independently, so the work fans out across a process
+pool (`n_jobs`), and emits float32 by default (halves the ~44 GB in-RAM matrix). The feature
+FUNCTIONS are unchanged, so results are numerically identical to the serial build (regression-
+tested) — the parallelism is in the driver only.
+FURTHER WORK (documented tradeoff, deliberately deferred): computing each feature as a per-ticker
+VECTORIZED rolling array once and indexing the sample points would remove the per-point recompute
+(another ~10-25x), but every feature's vectorized form must be proven bit-equal to the windowed
+one first (silently-different features are the exact bug class the study guards against). That
+rewrite is gated on a numeric-equality harness; on a 256 GB box the float32 matrix fits, so it is
+an optimization, not a blocker.
 """
 from __future__ import annotations
 
+from concurrent.futures import ProcessPoolExecutor
+
+import numpy as np
 import pandas as pd
 
 from gws.phase_a2.features_price_volume import compute_features, DEFAULT_LOOKBACKS
 from gws.phase_a2.generic_features import compute_generic_features
 
 
+def _features_for_ticker(args):
+    """Compute features for all sample points of ONE ticker (a picklable worker)."""
+    labels, idxs, series, bench, lookbacks, include_generic = args
+    out = []
+    for lab, i in zip(labels, idxs):
+        feats = compute_features(series["close"], series["high"], series["low"],
+                                 series["volume"], i, bench_close=bench, lookbacks=lookbacks)
+        if include_generic:
+            feats = {**feats, **compute_generic_features(
+                series["close"], series["high"], series["low"], series["volume"], i)}
+        out.append((lab, feats))
+    return out
+
+
 def build_feature_matrix(points: pd.DataFrame, series_by_ticker: dict, *,
                          bench_by_ticker: dict | None = None,
                          lookbacks=DEFAULT_LOOKBACKS,
-                         include_generic: bool = True) -> pd.DataFrame:
+                         include_generic: bool = True,
+                         n_jobs: int = 1, dtype=np.float32) -> pd.DataFrame:
     """Compute features for each (ticker_id, as_of_index) point.
 
     `series_by_ticker[tk]` is a dict with 'close','high','low','volume' arrays.
     Returns a DataFrame aligned 1:1 with `points` (same index), one column per feature.
     Includes the generic/auto bank unless `include_generic=False`.
-    """
-    recs = []
-    for row in points.itertuples():
-        s = series_by_ticker[row.ticker_id]
-        bench = bench_by_ticker.get(row.ticker_id) if bench_by_ticker else None
-        feats = compute_features(
-            s["close"], s["high"], s["low"], s["volume"], row.as_of_index,
-            bench_close=bench, lookbacks=lookbacks)
-        if include_generic:
-            feats = {**feats, **compute_generic_features(
-                s["close"], s["high"], s["low"], s["volume"], row.as_of_index)}
-        recs.append(feats)
-    return pd.DataFrame(recs, index=points.index)
+
+    `n_jobs` > 1 (or -1 for all cores) fans the per-ticker work out across a process pool;
+    the result is identical to the serial build. `dtype` controls the output precision
+    (float32 by default to halve memory at full-universe scale)."""
+    # group point positions by ticker (preserving each point's original index label)
+    by_ticker: dict = {}
+    for lab, tk, idx in zip(points.index, points["ticker_id"], points["as_of_index"]):
+        by_ticker.setdefault(tk, ([], [])) [0].append(lab)
+        by_ticker[tk][1].append(int(idx))
+
+    tasks = []
+    for tk, (labels, idxs) in by_ticker.items():
+        bench = bench_by_ticker.get(tk) if bench_by_ticker else None
+        tasks.append((labels, idxs, series_by_ticker[tk], bench, lookbacks, include_generic))
+
+    if n_jobs == 1 or len(tasks) <= 1:
+        results = [_features_for_ticker(t) for t in tasks]
+    else:
+        workers = None if n_jobs in (-1, 0) else n_jobs
+        with ProcessPoolExecutor(max_workers=workers) as ex:
+            results = list(ex.map(_features_for_ticker, tasks))
+
+    feats_by_label = {lab: feats for chunk in results for lab, feats in chunk}
+    recs = [feats_by_label[lab] for lab in points.index]
+    df = pd.DataFrame(recs, index=points.index)
+    return df.astype(dtype) if dtype is not None else df

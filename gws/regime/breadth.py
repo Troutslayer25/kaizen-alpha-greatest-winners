@@ -41,13 +41,18 @@ def compute_breadth(close_wide: pd.DataFrame, *, high_low_window: int = 252,
     Factor-2 raw score in [-1, 1]). `spread_pair` defaults to (min, max) of the sweep.
     """
     cw = close_wide.where(eligible_wide) if eligible_wide is not None else close_wide
-    n_issues = cw.notna().sum(axis=1).replace(0, np.nan)
     out = pd.DataFrame(index=cw.index)
 
     periods = sorted(set(sweep_periods))
     for p in periods:
         sma = cw.rolling(p, min_periods=p).mean()
-        out[f"pct_above_sma{p}"] = (cw > sma).sum(axis=1) / n_issues
+        # Denominator counts ONLY issues whose SMA is defined on this date (review m-9). Counting
+        # every issue-with-a-close — including those still in their MA warm-up, which compare
+        # False — structurally depresses participation in heavy-new-listing periods (late-'90s,
+        # 2020-21): exactly the regimes of interest.
+        elig = cw.notna() & sma.notna()
+        denom = elig.sum(axis=1).replace(0, np.nan)
+        out[f"pct_above_sma{p}"] = ((cw > sma) & elig).sum(axis=1) / denom
 
     # breadth term structure: short-horizon minus long-horizon participation
     short_p, long_p = spread_pair if spread_pair is not None else (periods[0], periods[-1])
@@ -57,9 +62,11 @@ def compute_breadth(close_wide: pd.DataFrame, *, high_low_window: int = 252,
 
     roll_max = cw.rolling(high_low_window, min_periods=high_low_window).max()
     roll_min = cw.rolling(high_low_window, min_periods=high_low_window).min()
-    new_high = (cw >= roll_max).sum(axis=1)
-    new_low = (cw <= roll_min).sum(axis=1)
+    elig_hl = cw.notna() & roll_max.notna()                       # only issues with a full window
+    denom_hl = elig_hl.sum(axis=1).replace(0, np.nan)
+    new_high = ((cw >= roll_max) & elig_hl).sum(axis=1)
+    new_low = ((cw <= roll_min) & elig_hl).sum(axis=1)
     out["new_high"] = new_high
     out["new_low"] = new_low
-    out["net_new_high_pct"] = (new_high - new_low) / n_issues
+    out["net_new_high_pct"] = (new_high - new_low) / denom_hl
     return out

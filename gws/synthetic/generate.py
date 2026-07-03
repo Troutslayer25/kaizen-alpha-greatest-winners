@@ -80,6 +80,15 @@ def _inject_chaos(rng, rets, volume, signal, plan, n_days):
         i = int(rng.integers(0, n_days))
         volume[i] *= float(rng.uniform(3.0, 8.0))
 
+    # overnight gaps (up AND down): a one-bar jump with no surrounding drift, away from planted
+    # moves — stresses ATR / true-range (the |high - prev_close| term) and any gap-sensitive
+    # feature, whose hard cases a gap-free synthetic never exercises.
+    for _ in range(rng.integers(4, 9)):
+        i = int(rng.integers(30, n_days - 2))
+        if _in_move_window(i):
+            continue
+        rets[i] += float(rng.choice([-1.0, 1.0])) * float(rng.uniform(0.05, 0.12))
+
     # per-move adversarial behavior
     for s, _, _ in plan:
         if rng.random() < 0.5:                               # false-breakout shakeout before trough

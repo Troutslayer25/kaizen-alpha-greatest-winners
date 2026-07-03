@@ -15,8 +15,6 @@ from __future__ import annotations
 
 import sys
 
-import norgatedata  # available on ka-runner only
-
 # internal index_name -> (Norgate index label, Norgate "current & past" watchlist name)
 TARGET_INDEXES = {
     "sp500":  ("S&P 500", "S&P 500 Current & Past"),
@@ -28,9 +26,28 @@ TARGET_INDEXES = {
     "ndx100": ("NASDAQ 100", "NASDAQ 100 Current & Past"),
 }
 
+# Pre-committed required earliest-membership depth per index (review m-7). Step-0 must ASSERT
+# the sampled earliest membership reaches at least this date, not merely that the watchlist is
+# non-empty — a Russell series that only starts in the 2000s would otherwise pass GO while the
+# study leans on deep history. Confirm/adjust against the installed norgatedata version; a miss
+# is a documented NO-GO for that index, not a warning.
+REQUIRED_START = {
+    "sp500": "1990-01-01", "sp400": "1994-01-01", "sp600": "1994-01-01",
+    "r1000": "1990-01-01", "r2000": "1990-01-01", "r3000": "1990-01-01",
+    "ndx100": "1990-01-01",
+}
+
+
+def meets_required_start(earliest, required) -> bool:
+    """True iff `earliest` (str/date or None) is on/before the `required` date string."""
+    if earliest is None:
+        return False
+    return str(earliest)[:10] <= required
+
 
 def _earliest_membership_date(symbol: str, index_label: str):
     """Earliest date this symbol shows as a constituent of index_label, or None."""
+    import norgatedata  # ka-runner only
     df = norgatedata.index_constituent_timeseries(
         symbol, index_label, timeseriesformat="pandas-dataframe")
     if df is None or df.empty:
@@ -40,6 +57,7 @@ def _earliest_membership_date(symbol: str, index_label: str):
 
 
 def coverage_for_index(index_label: str, watchlist: str) -> dict:
+    import norgatedata  # ka-runner only
     try:
         members = norgatedata.watchlist_symbols(watchlist)
     except Exception as e:  # noqa: BLE001 — diagnostic script, surface any failure
@@ -47,26 +65,37 @@ def coverage_for_index(index_label: str, watchlist: str) -> dict:
     if not members:
         return {"available": False, "error": f"watchlist '{watchlist}' empty"}
 
+    # Sample BOTH current and delisted members explicitly (review m-7). Norgate decorates
+    # delisted symbols as 'SYMBOL-YYYYMM'; sampling only the head of the list (mostly current
+    # members) would estimate a too-recent earliest date and never exercise the survivorship-
+    # critical names.
+    delisted = [s for s in members if "-" in s][:25]
+    current = [s for s in members if "-" not in s][:25]
+    sample = current + delisted
+
     earliest = None
-    sampled = 0
-    for sym in members[: min(len(members), 25)]:  # sample to estimate earliest coverage
+    sampled = n_delisted = 0
+    for sym in sample:
         try:
             d = _earliest_membership_date(sym, index_label)
         except Exception:  # noqa: BLE001
             continue
         sampled += 1
+        n_delisted += ("-" in sym)
         if d is not None and (earliest is None or d < earliest):
             earliest = d
     return {
         "available": True,
         "n_ever_members": len(members),
         "n_sampled": sampled,
+        "n_delisted_sampled": n_delisted,
         "earliest_membership_sampled": str(earliest) if earliest is not None else None,
     }
 
 
 def main() -> int:
-    print(f"{'index':8} {'avail':6} {'ever':>7} {'sampled':>8}  earliest(sampled)")
+    print(f"{'index':8} {'avail':6} {'ever':>7} {'sampl':>6} {'delist':>6} "
+          f"{'earliest':>12} {'req':>12} depth")
     ok = True
     for name, (label, watchlist) in TARGET_INDEXES.items():
         cov = coverage_for_index(label, watchlist)
@@ -74,10 +103,17 @@ def main() -> int:
             ok = False
             print(f"{name:8} {'NO':6}  -- error: {cov.get('error')}")
             continue
-        print(f"{name:8} {'YES':6} {cov['n_ever_members']:>7} {cov['n_sampled']:>8}  "
-              f"{cov['earliest_membership_sampled']}")
-    print("\nGO" if ok else "\nREVIEW REQUIRED — one or more indexes lack coverage; "
-          "drop with documented rationale (Scott).")
+        required = REQUIRED_START.get(name, "9999-99-99")
+        deep_ok = meets_required_start(cov["earliest_membership_sampled"], required)
+        has_delisted = cov.get("n_delisted_sampled", 0) > 0
+        row_ok = deep_ok and has_delisted
+        ok = ok and row_ok
+        print(f"{name:8} {'YES':6} {cov['n_ever_members']:>7} {cov['n_sampled']:>6} "
+              f"{cov.get('n_delisted_sampled', 0):>6} "
+              f"{str(cov['earliest_membership_sampled'])[:10]:>12} {required:>12} "
+              f"{'OK' if row_ok else 'SHORT' if not deep_ok else 'NO-DELISTED'}")
+    print("\nGO" if ok else "\nNO-GO — an index fails required depth or exposes no delisted "
+          "members. Drop it with documented rationale before Step 1 (Scott).")
     return 0 if ok else 1
 
 

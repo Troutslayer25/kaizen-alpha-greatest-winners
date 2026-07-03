@@ -23,6 +23,33 @@ from lightgbm import LGBMClassifier
 
 from gws.common.walkforward import expanding_splits
 
+# The kernel SVM is O(n^2)-O(n^3) in fit and `probability=True` adds ~5x (internal Platt CV);
+# beyond ~1e5 rows it effectively never terminates and would hang a full-universe bake-off
+# (review, compute aspect). We keep the nonlinear model but PRE-COMMIT a hard training-subsample
+# cap so its cost is bounded and constant; scoring is still on the full fold.
+SVM_TRAIN_CAP = 20_000
+
+
+class _CappedSVC:
+    """RBF SVC that trains on at most SVM_TRAIN_CAP rows (deterministic subsample), so the
+    bake-off scales. Scores the full test fold. sklearn-compatible (fit/predict_proba)."""
+
+    def __init__(self, cap: int = SVM_TRAIN_CAP, **kw):
+        self.cap = cap
+        self.kw = kw
+        self._m = None
+
+    def fit(self, X, y):
+        X = np.asarray(X, float); y = np.asarray(y)
+        if len(y) > self.cap:
+            idx = np.random.default_rng(0).choice(len(y), self.cap, replace=False)
+            X, y = X[idx], y[idx]
+        self._m = SVC(probability=True, **self.kw).fit(X, y)
+        return self
+
+    def predict_proba(self, X):
+        return self._m.predict_proba(X)
+
 
 def build_estimators(seed: int = 0, class_weight="balanced") -> dict:
     """The bake-off roster. Each value is a zero-arg builder returning a fresh,
@@ -39,7 +66,7 @@ def build_estimators(seed: int = 0, class_weight="balanced") -> dict:
         "elastic_net_logistic": lambda: LogisticRegression(
             solver="saga", l1_ratio=0.5,            # l1_ratio implies elastic-net (sklearn >= 1.8 API)
             class_weight=class_weight, max_iter=5000, random_state=seed),
-        "svm": lambda: SVC(probability=True, class_weight=class_weight, random_state=seed),
+        "svm": lambda: _CappedSVC(class_weight=class_weight, random_state=seed),
     }
 
 
@@ -76,9 +103,21 @@ def run_walk_forward(X, y, t, test_boundaries, label_horizon, build_estimator, *
     yv = np.concatenate(oos_y)
     pred = (p >= threshold).astype(int)
     prec, rec, f1, _ = precision_recall_fscore_support(yv, pred, average="binary", zero_division=0)
+    # Headline AUC is the n-weighted mean of PER-FOLD AUCs with a fold-dispersion band (review
+    # M-7). A single AUC on probabilities concatenated across folds mixes scores from different
+    # training sizes and is a biased estimator under drifting base rates; findings_hierarchy
+    # should consume auc_fold_mean, not the pooled auc (kept for reference / diagnostics).
+    if per_fold:
+        fa = np.array([f["auc"] for f in per_fold]); fn = np.array([f["n"] for f in per_fold])
+        auc_fold_mean = float(np.average(fa, weights=fn))
+        auc_fold_std = float(np.sqrt(np.average((fa - auc_fold_mean) ** 2, weights=fn))) \
+            if len(fa) > 1 else float("nan")
+    else:
+        auc_fold_mean = auc_fold_std = float("nan")
     return {
         "oos_proba": p, "oos_y": yv,
-        "auc": float(roc_auc_score(yv, p)),
+        "auc_fold_mean": auc_fold_mean, "auc_fold_std": auc_fold_std,
+        "auc": float(roc_auc_score(yv, p)),          # pooled-CV AUC (diagnostic, not headline)
         "brier": float(brier_score_loss(yv, p)),
         "precision": float(prec), "recall": float(rec), "f1": float(f1),
         "per_fold": per_fold,

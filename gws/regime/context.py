@@ -15,14 +15,27 @@ from gws.regime.breadth import compute_breadth
 
 
 def trend_anchor(bench_close, ma_period: int = 200) -> pd.Series:
-    """Binary flag: broad index above its long-term MA. NaN during MA warm-up -> False."""
+    """Broad index above its long-term MA: 1.0 above, 0.0 below, NaN during MA warm-up.
+
+    Warm-up is UNKNOWN, not below (review m-8): mapping the 200-day warm-up NaN to False
+    silently labels the earliest bars 'risk-off'. NaN keeps the ambiguity honest."""
     s = pd.Series(np.asarray(bench_close, float))
     ma = s.rolling(ma_period, min_periods=ma_period).mean()
-    return (s > ma).fillna(False)
+    res = pd.Series(np.where(s.to_numpy() > ma.to_numpy(), 1.0, 0.0), index=s.index)
+    res[ma.isna().to_numpy()] = np.nan
+    return res
 
 
 def build_regime_daily(close_wide: pd.DataFrame, bench_close, *, high_low_window: int = 252,
-                       anchor_ma: int = 200, eligible_wide: pd.DataFrame | None = None) -> pd.DataFrame:
+                       anchor_ma: int = 200, eligible_wide: pd.DataFrame | None = None,
+                       require_eligible: bool = True) -> pd.DataFrame:
+    # Breadth over a survivor-only close matrix inflates deep-history breadth (dead names never
+    # drag the count down), which biases regime labels bullish exactly when it matters. The
+    # production path MUST pass the PIT eligibility mask (review m-8 / PIT 3.5).
+    if require_eligible and eligible_wide is None:
+        raise ValueError(
+            "build_regime_daily: eligible_wide is required — pass the PIT mask from "
+            "gws.universe_eligibility, or set require_eligible=False for a single-cohort test")
     breadth = compute_breadth(close_wide, high_low_window=high_low_window, eligible_wide=eligible_wide)
     df = pd.DataFrame(index=close_wide.index)
     df["f1_score"] = np.nan          # equity/options — pending Phase 0 data start
@@ -33,5 +46,10 @@ def build_regime_daily(close_wide: pd.DataFrame, bench_close, *, high_low_window
     df["composite_score"] = (df["f2_score"] * 10.0).clip(-10, 10)
     df["regime_label"] = pd.cut(df["composite_score"], bins=[-np.inf, -3, 3, np.inf],
                                 labels=["risk_off", "neutral", "risk_on"])
-    df["score_version"] = "v1_breadth_anchor"
+    # PER-DATE version string (review m-8): the composite's MEANING changes when F1/F3 begin
+    # mid-history, so a single version label over the whole series is a lie. Stamp per row by
+    # which factors are actually present, so pre-1990 breadth-only scores are never silently
+    # compared to later three-factor scores under one string.
+    have3 = df[["f1_score", "f3_score"]].notna().all(axis=1)
+    df["score_version"] = np.where(have3, "v3_breadth_f1_f3", "v1_breadth_anchor")
     return df

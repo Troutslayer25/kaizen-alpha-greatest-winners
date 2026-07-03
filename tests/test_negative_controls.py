@@ -1,8 +1,8 @@
 import numpy as np
 
 from gws.common.negative_controls import (
-    shuffle_labels, permute_features_within_date, shift_labels_by,
-    negative_control_report, passes_negative_controls,
+    shuffle_labels, permute_features_within_date, shift_labels_within_ticker,
+    negative_control_report, negative_control_verdicts,
 )
 from gws.phase_a3.ml_bakeoff import build_estimators, run_walk_forward
 
@@ -16,7 +16,8 @@ def _world(seed=0, n_dates=150, per_date=10):
     signal = rng.normal(0, 1, n)
     y = (signal + rng.normal(0, 0.5, n) > 0).astype(int)
     X = np.column_stack([signal, rng.normal(0, 1, n)])
-    return X, y, t
+    tickers = np.tile(np.arange(per_date), n_dates)
+    return X, y, t, tickers
 
 
 def _auc_fn(X, y, t):
@@ -35,31 +36,33 @@ def test_permute_within_date_preserves_daily_distribution():
     X = np.arange(12, dtype=float).reshape(6, 2)
     dates = np.array([1, 1, 1, 2, 2, 2])
     out = permute_features_within_date(X, dates, seed=0)
-    # each date's set of rows is preserved, only order changes
     for d in (1, 2):
         a = X[dates == d]; b = out[dates == d]
         assert sorted(a.sum(1)) == sorted(b.sum(1))
 
 
-def test_shift_labels_misaligns():
-    y = np.arange(10)
-    assert not np.array_equal(shift_labels_by(y, 3), y)
+def test_within_ticker_shift_stays_inside_each_ticker():
+    y = np.array([0, 1, 2, 3, 10, 11, 12, 13])
+    tk = np.array([0, 0, 0, 0, 1, 1, 1, 1])
+    out = shift_labels_within_ticker(y, tk, k=1)
+    # every value stays with its own ticker's label pool
+    assert set(out[tk == 0]) == {0, 1, 2, 3}
+    assert set(out[tk == 1]) == {10, 11, 12, 13}
+    assert not np.array_equal(out, y)
 
 
-def test_negative_controls_pass_on_clean_pipeline():
-    # Real signal recovers; every corruption collapses to ~chance.
-    X, y, t = _world(0)
-    report = negative_control_report(X, y, t, _auc_fn, seed=0)
+def test_clean_pipeline_is_leak_free_and_has_signal():
+    X, y, t, tk = _world(0)
+    report = negative_control_report(X, y, t, _auc_fn, tickers=tk, seed=0, n_null=8)
+    v = negative_control_verdicts(report)
     assert report["real"] > 0.65
-    for k in ("shuffled_labels", "permuted_features", "shifted_labels"):
-        assert abs(report[k] - 0.5) < 0.1, f"{k} should be ~chance, got {report[k]}"
-    assert passes_negative_controls(report, margin=0.1)
+    assert report["shuffle_null"]["mean"] < 0.6          # learned chance band sits near 0.5
+    assert v["leak_free"] and v["has_signal"] and v["passes"]
 
 
-def test_leaky_evaluation_fails_negative_controls():
-    # A BROKEN evaluation (fit and score on the same rows — no holdout) memorizes even random
-    # labels, so it scores high under shuffled labels. The harness must catch that: this is
-    # exactly the CV-integrity failure the shuffle-labels control exists to detect.
+def test_leaky_evaluation_is_flagged_not_leak_free():
+    # A BROKEN evaluation (fit and score on the same rows) memorizes even random labels, so its
+    # shuffle-null band is elevated far above chance -> not leak_free -> does not pass.
     from sklearn.ensemble import RandomForestClassifier
     from sklearn.metrics import roc_auc_score
 
@@ -67,7 +70,9 @@ def test_leaky_evaluation_fails_negative_controls():
         m = RandomForestClassifier(n_estimators=60, random_state=0).fit(X, y)
         return roc_auc_score(y, m.predict_proba(X)[:, 1])
 
-    X, y, t = _world(2)
-    report = negative_control_report(X, y, t, _leaky_in_sample_auc, seed=0)
-    assert report["shuffled_labels"] > 0.6      # memorized random labels -> not chance
-    assert not passes_negative_controls(report, margin=0.1)
+    X, y, t, tk = _world(2)
+    report = negative_control_report(X, y, t, _leaky_in_sample_auc, tickers=tk, seed=0, n_null=8)
+    v = negative_control_verdicts(report)
+    assert report["shuffle_null"]["mean"] > 0.6          # memorized random labels
+    assert not v["leak_free"]
+    assert not v["passes"]

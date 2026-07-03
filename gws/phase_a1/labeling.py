@@ -13,7 +13,7 @@ import pandas as pd
 
 
 def build_setup_labels(moves_by_ticker: dict, n_days: int, forward_window_k: int, *,
-                       sample_every: int = 5, min_index: int = 210,
+                       sample_every: int = 5, min_index: int = 252,
                        max_index: int | None = None) -> pd.DataFrame:
     """Sample (ticker, as_of_index) points at a fixed cadence and label them.
 
@@ -28,13 +28,23 @@ def build_setup_labels(moves_by_ticker: dict, n_days: int, forward_window_k: int
     rows = []
     hi = n_days if max_index is None else min(max_index, n_days)
     for tk, moves in moves_by_ticker.items():
-        troughs = np.array(sorted(m.trough_idx for m in moves), dtype=int)
+        raw = [m.trough_idx for m in moves]
+        troughs = np.array(sorted(raw), dtype=int)
+        # Undeduped multi-scale troughs would label the SAME trough repeatedly, inflating the
+        # positive class and the effective N that C-1's clustered inference then has to undo.
+        # Fail closed: the caller must pass a single scale or dedup first (review C-1).
+        if len(set(raw)) != len(raw):
+            raise ValueError(
+                f"ticker {tk}: duplicate trough indices in moves_by_ticker — pass a single "
+                f"pre-committed scale or dedup troughs across scales before labeling")
         for i in range(min_index, hi):
             if (i - min_index) % sample_every != 0:
                 continue
             lead, linked = None, None
             if troughs.size:
-                ahead = troughs[(troughs > i) & (troughs <= i + forward_window_k)]
+                # `>= i` so a point standing exactly ON a trough is the best-case setup (lead 0),
+                # not a diluting negative (review, code-quality; design: "at or before the trough").
+                ahead = troughs[(troughs >= i) & (troughs <= i + forward_window_k)]
                 if ahead.size:
                     linked = int(ahead[0])
                     lead = linked - i

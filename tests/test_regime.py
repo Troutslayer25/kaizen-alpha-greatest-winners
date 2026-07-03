@@ -66,12 +66,18 @@ def test_breadth_is_future_invariant():
     bench = np.linspace(100, 200, N)
     bench_mut = bench.copy(); bench_mut[LATE + 1:] *= 1.3
     a = trend_anchor(bench); b = trend_anchor(bench_mut)
-    assert (a.iloc[:LATE + 1] == b.iloc[:LATE + 1]).all()
+    pd.testing.assert_series_equal(a.iloc[:LATE + 1], b.iloc[:LATE + 1])  # NaN-safe (warm-up)
+
+
+def test_regime_daily_requires_eligibility_mask_in_production():
+    import pytest
+    with pytest.raises(ValueError, match="eligible_wide is required"):
+        build_regime_daily(_wide("up"), np.linspace(100, 200, N))
 
 
 def test_regime_daily_assembles_and_labels():
     bench = np.linspace(100, 200, N)
-    df = build_regime_daily(_wide("up"), bench)
+    df = build_regime_daily(_wide("up"), bench, require_eligible=False)
     assert {"f1_score", "f2_score", "f3_score", "trend_anchor", "composite_score",
             "regime_label"}.issubset(df.columns)
     assert df["f1_score"].isna().all() and df["f3_score"].isna().all()   # pending Phase-0 data

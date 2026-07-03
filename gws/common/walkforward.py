@@ -5,8 +5,10 @@ The binding validation scheme for the production classifier:
   - TEST periods are non-overlapping and strictly sequential.
   - PURGE: training observations whose forward-label window (length K) reaches into
     the test period are removed (López de Prado purged CV).
-  - EMBARGO: a buffer after each test period is excluded from training (matters only
-    when training could include post-test observations; included for generality).
+  - EMBARGO: an additional buffer of `embargo` trading days immediately BEFORE each test
+    period is excluded from training. The purge already drops train obs whose label window
+    reaches the test start; the embargo drops the last `embargo` train days regardless, guarding
+    against serial-correlation leakage at the boundary that the label-window purge alone misses.
 
 Ticker non-independence is handled in inference (ticker-clustered SEs / block
 bootstrap), NOT by forcing every ticker into one fold — that is incompatible with an
@@ -62,8 +64,9 @@ def expanding_splits(
         train_mask = t < ts
         # purge: keep a training obs only if its label window finishes before test start
         train_mask &= (t + label_horizon) < ts
+        # embargo: drop the last `embargo` training days before the test start (boundary buffer)
         if embargo > 0:
-            train_mask &= ~((t >= te) & (t < te + embargo))
+            train_mask &= t < (ts - embargo)
         train_idx = np.where(train_mask)[0]
         yield train_idx, test_idx
 

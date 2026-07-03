@@ -13,15 +13,45 @@ CREATE SCHEMA IF NOT EXISTS gws;
 
 -- Historical PIT index-constituent membership (Norgate-sourced). NET-NEW: the
 -- production DB has no membership table; this is critical-path blocker #1.
+--
+-- KEYED ON entity_id (= Norgate assetid = ka_history.entities.entity_id), NOT
+-- tickers.id. tickers.id only exists for the ~7,250 CURRENT FMP symbols; keying
+-- membership there silently drops every delisted / pre-2010 constituent and
+-- reintroduces survivorship bias into the one table whose whole job is to prevent
+-- it (review 2026-07-03 CF-1). entity_id is the permanent identity that exists for
+-- dead names. The FMP-era public join goes through gws.entity_ticker_map.
 CREATE TABLE IF NOT EXISTS gws.index_membership (
-  ticker_id    INTEGER NOT NULL,
+  entity_id    BIGINT  NOT NULL,           -- Norgate assetid = ka_history.entities.entity_id
   index_name   TEXT    NOT NULL,           -- 'sp500','sp400','sp600','r1000','r2000','r3000','ndx100'
   from_date    DATE    NOT NULL,           -- inclusive
-  to_date      DATE,                        -- NULL = still a member
+  to_date      DATE,                        -- NULL = still a member AND still listed (see ingester)
   source       TEXT    NOT NULL DEFAULT 'norgate',
-  PRIMARY KEY (ticker_id, index_name, from_date)
+  PRIMARY KEY (entity_id, index_name, from_date)
 );
-CREATE INDEX IF NOT EXISTS ix_index_membership_ticker ON gws.index_membership (ticker_id, from_date);
+CREATE INDEX IF NOT EXISTS ix_index_membership_entity ON gws.index_membership (entity_id, from_date);
+
+-- entity_id <-> tickers.id crosswalk (lineage artifact, not a convention). Populated
+-- for entities that have a live FMP symbol; delisted / pre-2010 entities have NO row
+-- here and are joined by entity_id against ka_history only.
+CREATE TABLE IF NOT EXISTS gws.entity_ticker_map (
+  entity_id    BIGINT  NOT NULL PRIMARY KEY,   -- ka_history.entities.entity_id (Norgate assetid)
+  ticker_id    INTEGER NOT NULL,               -- public.tickers.id (FMP domain)
+  match_method TEXT    NOT NULL,               -- 'assetid_symbol' | 'manual' | ...
+  confidence   NUMERIC,                        -- 0..1 (symbol-recycling ambiguity)
+  created_at   TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ix_entity_ticker_map_ticker ON gws.entity_ticker_map (ticker_id);
+
+-- Watchlist symbols the ingester could NOT resolve to a ka_history entity — persisted,
+-- never printed-and-forgotten (review 2026-07-03 CF-1). A non-trivial count here HALTs
+-- the ingest: a silently short universe is the failure mode we are guarding against.
+CREATE TABLE IF NOT EXISTS gws.index_membership_unmapped (
+  norgate_symbol TEXT NOT NULL,
+  index_name     TEXT NOT NULL,
+  reason         TEXT NOT NULL,                -- 'no_assetid' | 'assetid_not_in_ka_history'
+  observed_at    TIMESTAMPTZ DEFAULT now(),
+  PRIMARY KEY (norgate_symbol, index_name)
+);
 
 -- Liquidity-tier reference (v2: NOT a universe gate). The ADV floor was removed from
 -- universe construction; liquidity is carried as a feature and capacity is applied at the
@@ -107,7 +137,13 @@ CREATE TABLE IF NOT EXISTS gws.moves (
   context_score      NUMERIC,                -- snapshot from regime_daily at start_date
   context_label      TEXT,
   is_control         BOOLEAN NOT NULL DEFAULT FALSE,
-  magnitude_pctile   NUMERIC                 -- percentile of magnitude within the population (significance = percentile, not a hardcoded cutoff)
+  magnitude_pctile   NUMERIC,                -- significance = percentile, not a hardcoded cutoff.
+                                             -- PIT RULE (review 2026-07-03 CF-3): this percentile MUST NOT be
+                                             -- computed over the full 1950-2025 population — that leaks the future
+                                             -- move distribution into every training-fold label. Assign it via
+                                             -- gws.phase_a1.significance (frozen train-block threshold OR expanding
+                                             -- window: rank vs moves decided on/before this move's decision date).
+  pctile_basis       TEXT                    -- provenance of magnitude_pctile: 'frozen_train:<date>' | 'expanding' (never 'full_sample')
 );
 CREATE INDEX IF NOT EXISTS ix_moves_ticker ON gws.moves (ticker_id, start_date);
 

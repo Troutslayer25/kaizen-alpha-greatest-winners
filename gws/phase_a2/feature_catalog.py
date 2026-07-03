@@ -64,6 +64,12 @@ GENERIC_PREFIXES = frozenset({
 })
 
 
+# The family taxonomy is FDR-LOAD-BEARING (review M-1): hierarchical_fdr corrects at the
+# family level, so how features group into families changes what clears correction. The
+# prefix strip below is only the DEFAULT grouping; the authoritative, frozen family map is
+# pre-committed in phases/PHASE_A2_PRECOMMIT.md before any A3 result is seen. Re-grouping a
+# strong member out of a noisy family post-hoc is an FDR-gaming vector — it must go through a
+# committed change to that map, not a silent rename.
 def _prefix(feature_name: str) -> str:
     """Strip a trailing _<lookback> / _<period> from a feature name to get its family."""
     parts = feature_name.rsplit("_", 1)

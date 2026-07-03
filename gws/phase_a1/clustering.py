@@ -47,17 +47,29 @@ def make_hdbscan(min_cluster_size: int = 15):
     return lambda X: HDBSCAN(min_cluster_size=min_cluster_size, copy=True).fit_predict(X)
 
 
-def cluster_stability(X, clusterer, n_boot: int = 50, seed: int = 0) -> dict:
+def cluster_stability(X, clusterer, n_boot: int = 50, seed: int = 0,
+                      subsample_frac: float | None = None) -> dict:
     """Bootstrap stability of a clustering. Returns the verdict dict written to
     gws.cluster_stability. `clusterer` maps an (n, d) array to integer labels
-    (HDBSCAN uses -1 for noise)."""
+    (HDBSCAN uses -1 for noise).
+
+    `subsample_frac` (review, compute aspect): when set (e.g. 0.5), use m-out-of-n subsampling
+    WITHOUT replacement instead of a full-size bootstrap. Each HDBSCAN fit is then on m<n rows —
+    cheaper at the 1e6-1e7-move scale where a single fit is minutes — and m-out-of-n is the
+    statistically cleaner stability estimator anyway. Replicates are independent and can be run
+    across a process pool by the caller."""
     X = np.asarray(X, float)
     base = clusterer(X)
     n_clusters = len(set(np.unique(base)) - {-1})
     rng = np.random.default_rng(seed)
+    n = len(X)
+    m = n if subsample_frac is None else max(2, int(subsample_frac * n))
     aris, vis = [], []
     for _ in range(n_boot):
-        idx = rng.integers(0, len(X), len(X))           # bootstrap resample with replacement
+        if subsample_frac is None:
+            idx = rng.integers(0, n, n)                  # bootstrap resample with replacement
+        else:
+            idx = rng.choice(n, m, replace=False)        # m-out-of-n subsample
         lab = clusterer(X[idx])
         uniq, first = np.unique(idx, return_index=True)  # compare on points present in both
         a, b = base[uniq], lab[first]
@@ -106,15 +118,26 @@ def resolve_representation(X, clusterer, labels, *, n_quantile_bands: int = 10,
         return {"representation": "continuous", "verdict": verdict,
                 "discrete_var": None, "continuous_var": None}
 
-    # marginal -> tie-break on within-group dispersion of dimension 0
-    dim0 = X[:, 0]
-    discrete_var = _mean_within_group_var(dim0, labels)
-    q = np.clip((dim0.argsort().argsort() * n_quantile_bands) // len(dim0),
-                0, n_quantile_bands - 1)
-    continuous_var = _mean_within_group_var(dim0, q)
+    # marginal -> tie-break (review M-3). Two de-biasing corrections vs the old dim-0 version:
+    #   (1) MATCH the continuous banding granularity to the cluster count (n_bands = n_clusters).
+    #       Within-group variance falls mechanically with more groups, so a fixed 10 bands vs
+    #       ~3 clusters rigged the comparison toward "continuous". Equal group counts remove it.
+    #   (2) Score on ALL clustering dimensions (normalized per dim so scales are comparable), not
+    #       just magnitude — clusters that separate on smoothness/duration got zero credit before.
+    # The continuous baseline bands along the first principal axis (a 1-D ordering of the space).
+    labels = np.asarray(labels)
+    n_clusters = len(set(np.unique(labels)) - {-1})
+    n_bands = max(2, n_clusters)
+    Xc = X - X.mean(axis=0)
+    _, _, vt = np.linalg.svd(Xc, full_matrices=False)
+    pc1 = Xc @ vt[0]
+    q = np.clip((pc1.argsort().argsort() * n_bands) // len(pc1), 0, n_bands - 1)
+    discrete_var = _mean_within_group_var_multi(X, labels)
+    continuous_var = _mean_within_group_var_multi(X, q)
     rep = "discrete" if discrete_var <= continuous_var else "continuous"
     return {"representation": rep, "verdict": verdict,
-            "discrete_var": float(discrete_var), "continuous_var": float(continuous_var)}
+            "discrete_var": float(discrete_var), "continuous_var": float(continuous_var),
+            "n_clusters": n_clusters, "n_bands": n_bands}
 
 
 def _mean_within_group_var(values, groups) -> float:
@@ -122,6 +145,16 @@ def _mean_within_group_var(values, groups) -> float:
     groups = np.asarray(groups)
     vs = [values[groups == g].var() for g in np.unique(groups) if g != -1 and (groups == g).sum() > 1]
     return float(np.mean(vs)) if vs else float("inf")
+
+
+def _mean_within_group_var_multi(X, groups) -> float:
+    """Mean within-group variance across ALL dimensions, each normalized by that dimension's
+    total variance so no single-scale dimension dominates the comparison."""
+    X = np.asarray(X, float)
+    tot = X.var(axis=0)
+    tot[tot == 0] = 1.0
+    per_dim = [_mean_within_group_var(X[:, j], groups) / tot[j] for j in range(X.shape[1])]
+    return float(np.mean(per_dim))
 
 
 def segment_by_early_drama(labels, had_early_shakeout) -> np.ndarray:

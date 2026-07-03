@@ -28,6 +28,27 @@ def test_hierarchical_fdr_protects_a_lone_small_p_in_a_dead_family():
     assert not out["noise"]["members_rejected"].any()
 
 
+def test_member_alpha_is_selection_adjusted():
+    # M-1: with 1 of 4 families selected, members are tested at alpha * 1/4, not full alpha.
+    fams = {"real": [1e-6, 1e-6, 1e-6], "n1": [.5, .6, .7],
+            "n2": [.4, .8, .9], "n3": [.5, .5, .5]}
+    out = hierarchical_fdr(fams, alpha=0.05)
+    assert out["real"]["family_significant"]
+    assert out["real"]["alpha_member"] == 0.05 * 1 / 4
+
+
+def test_hierarchical_fdr_controls_member_fdr_under_null():
+    # M-1 correctness: under the global null every rejection is false, so the member-level
+    # family-wise rejection rate must sit at ~alpha, not above it.
+    rng = np.random.default_rng(0)
+    reps, false_reps = 400, 0
+    for _ in range(reps):
+        fams = {f"fam{i}": list(rng.uniform(0, 1, 10)) for i in range(8)}
+        out = hierarchical_fdr(fams, alpha=0.05)
+        false_reps += any(o["members_rejected"].any() for o in out.values())
+    assert false_reps / reps <= 0.08
+
+
 def test_expected_max_sharpe_grows_with_trials():
     assert expected_max_sharpe(2) < expected_max_sharpe(100) < expected_max_sharpe(10000)
     assert expected_max_sharpe(1) == 0.0
