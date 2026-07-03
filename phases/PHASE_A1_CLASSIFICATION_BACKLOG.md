@@ -1,44 +1,39 @@
-# Phase A1 — move-classification enrichment backlog (post-review, additive)
+# Phase A1 — move-classification enrichment backlog (status)
 
-**Opened 2026-07-03** after the four-auditor review of the move-classification substrate. Every
-item is ADDITIVE (a new descriptor/inception field or a query/DB affordance) and freeze-safe by
-the module's additive contract — add the field + a JSONB key and re-characterize (cheap; no
-re-detection). Bump `persist_moves.CHAR_VERSION` on any formula change. Land the high-value trader
-descriptors BEFORE the first full characterization pass so the catalog answers real queries.
+**Opened 2026-07-03** after the four-auditor review; **worked down 2026-07-03.** Items are ADDITIVE
+(new descriptor/inception field or a query/DB affordance) and freeze-safe. Bump
+`persist_moves.CHAR_VERSION` on any formula change.
 
-## Practitioner enrichments (highest value first)
-- **Deep base / pivot / stage context (MC-2).** Beyond `incept_base_depth_63`: base LENGTH (weeks),
-  distance to the nearest prior pivot/consolidation high at inception, tightness/VCP signature
-  (successive contraction), prior-move (base-on-base) context, Weinstein stage. This is what
-  distinguishes flat-base Stage-2 launch vs V-recovery vs high-tight-flag — the taxonomy Scott
-  actually trades. Needs a light base detector run ≤ trough.
-- **Theme's OWN move (thematic comparison).** `.tickers_in(members)` slices by a theme's members,
-  but there is no theme composite move to compare against. Build a theme/sector composite series →
-  characterize the theme's move → lead/lag and rs-vs-theme per member move.
-- **Inception adds:** anchored-VWAP distance (from the base low / prior pivot); market-cap /
-  dollar-volume / liquidity tier; sector/industry at inception (PIT — gated on the GICS-vintage
-  pre-commit); 126/252-day RS and the confirmed 40/20/20/20 RS composite; RS-line-new-high flag;
-  MA stack order (50>150>200); days-since-52w-low.
-- **True overnight gaps from opens** (rename kept as `big_day_*` for close-to-close): add
-  `overnight_gap_count`/`largest_overnight_gap` computed from `open` when the open series is loaded.
+## DONE
+- **MC-2 base / pivot / stage context** — `gws/phase_a1/base_context.py`: days-since-52w-high/low,
+  prior-leg gain, VCP contraction ratio, tightness, Weinstein stage, MA stack order — PIT, merged
+  into the inception bag, future-invariance tested.
+- **Inception RS** — 63/126/252-day RS vs bench, the 40/20/20/20 composite, RS-line-new-high flag.
+- **True overnight gaps from opens** — `overnight_gap_count`/`largest_overnight_gap` (open vs prior
+  close), distinct from the close-to-close `big_day_*`; `open_` threaded through characterize/persist.
+- **During-move MA interaction** — `pct_days_above_sma50/200`, `first_close_below_sma50_frac`.
+- **Theme-own-move** — `gws/phase_a1/theme_move.py`: composite index + rs-vs-theme + theme-move
+  detection (pure; DB membership wiring is the caller's job).
+- **Detection provenance** — `detect_params JSONB` + `run_id` on `gws.moves` and `persist_moves`.
+- **Catalog audits** — `gws/phase_a1/audit_moves.py`: the 5 step_09-style checks (phantom canary,
+  open-move, magnitude consistency, cross-domain span probe, null coverage).
+- **Vectorized-builder integration** — `build_feature_matrix(vectorized=True)` sources the proven
+  families from `features_vectorized`, skipping their per-point recompute; end-to-end equality with
+  the pure build is unit-tested. `compute_features(exclude=...)` added.
+- **Minor** — `_json_safe` numpy-scalar/nested-safe; `MoveQuery.order_by/select` column whitelist;
+  expression btree indexes on hot JSONB fields.
 
-## Data-lineage follow-ups
-- `run_id` / `detect_params JSONB` on `gws.moves` (records `atr_period`/`min_duration`, not just
-  `scale`) so two parameter runs are distinguishable (Lineage m-10).
-- Expression btree indexes on hot JSONB fields — GIN(jsonb_ops) does not serve `(bag->>k)::numeric`
-  range predicates (Lineage m-3); harmless at current scale.
-- The 5 step_09-style audit checks (Lineage report §): phantom-move canary (`total_pct_gain>100`),
-  ≤1 open move per (ticker,scale), row-internal `descriptors->>'magnitude' ≈ total_pct_gain`,
-  cross-domain span probe, per-JSONB-field null-coverage report.
-- Cross-domain span translation policy via `gws.entity_ticker_map` for `completeness_audit` spans
-  (FMP-keyed) consumed by a Norgate-domain detection (Lineage C-1 note).
-
-## Compute
-- Vectorized-builder integration: route `build_feature_matrix` through
-  `gws.phase_a2.features_vectorized` for the proven families (needs `compute_features` family-
-  selection so the per-point path skips them) — already gated on `gws.validation.feature_equality`.
-
-## Minor
-- `_json_safe` recursion / numpy-scalar `default=` handler when descriptors grow nested.
-- `MoveQuery.order_by`/`select` column whitelist if the query layer ever backs an API.
-- `duration_days` is a trading-bar count (document vs calendar `peak_date - start_date`).
+## REMAINING (small, honest)
+- **Driver open-loading:** `detect_moves_for_ticker` doesn't yet SELECT `open`; the overnight-gap
+  fields populate only when a caller passes `open_` to persist. One-line SELECT add when the
+  orchestrator is written.
+- **Cross-domain span translation:** `completeness_audit` spans are FMP-keyed; a Norgate-domain
+  detection consuming them needs a `gws.entity_ticker_map` translation (source filter is in place;
+  the translation policy is the remaining decision — Lineage C-1 note).
+- **Sector/industry + cap/liquidity tier at inception** — gated on the GICS-vintage pre-commit
+  (PHASE0_GICS_VINTAGE_PRECOMMIT.md) and a PIT market-cap source.
+- **AVWAP-from-base-low distance** — needs an anchor-selection rule; deferred.
+- **Deeper base geometry** (explicit pivot/consolidation-high detection, base-on-base count) beyond
+  the current days-since-high / VCP / stage proxies.
+- **Expensive-family vectorization** (polyfit slopes, CMF, generic bank) — where the real compute
+  win is; each extends the vectorized path under `gws/validation/feature_equality`.

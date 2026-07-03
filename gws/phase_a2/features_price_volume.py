@@ -44,11 +44,15 @@ def _mean_true_range(high, low, close, i, lb):
 
 
 def compute_features(close, high, low, volume, i, *, bench_close=None,
-                     lookbacks=DEFAULT_LOOKBACKS):
+                     lookbacks=DEFAULT_LOOKBACKS, exclude=frozenset()):
     """Return {feature_name: value} for the observation at index `i`.
 
     Uses only close[: i+1] (and the equivalent for the other series). `bench_close`
     enables relative-strength features; omit it to skip them.
+
+    `exclude` (compute aspect): family prefixes to SKIP — the builder passes the families it will
+    supply from the proven vectorized path (gws.phase_a2.features_vectorized), so they are not
+    recomputed per point. End-to-end equality with the un-excluded build is unit-tested.
     """
     close = np.asarray(close, float)
     high = np.asarray(high, float)
@@ -63,8 +67,10 @@ def compute_features(close, high, low, volume, i, *, bench_close=None,
         w = _window(close, i, lb)
         if w is not None:
             mx, mn = float(w.max()), float(w.min())
-            feats[f"dist_from_high_{lb}"] = px / mx - 1.0 if mx > 0 else np.nan
-            feats[f"dist_from_low_{lb}"] = px / mn - 1.0 if mn > 0 else np.nan
+            if "dist_from_high" not in exclude:
+                feats[f"dist_from_high_{lb}"] = px / mx - 1.0 if mx > 0 else np.nan
+            if "dist_from_low" not in exclude:
+                feats[f"dist_from_low_{lb}"] = px / mn - 1.0 if mn > 0 else np.nan
             rets = np.diff(np.log(w)) if (w > 0).all() else np.array([np.nan])
             feats[f"ret_std_{lb}"] = float(np.std(rets, ddof=1)) if len(rets) > 1 else np.nan
         atr = _mean_true_range(high, low, close, i, lb)
@@ -111,9 +117,9 @@ def compute_features(close, high, low, volume, i, *, bench_close=None,
         if w is None:
             continue
         mx, mn = float(w.max()), float(w.min())
-        if mx > 0:
+        if mx > 0 and "base_depth" not in exclude:
             feats[f"base_depth_{lb}"] = (mx - mn) / mx                  # range depth (drawdown across the base)
-        if mx > mn:
+        if mx > mn and "range_position" not in exclude:
             feats[f"range_position_{lb}"] = (px - mn) / (mx - mn)       # where in the range price sits (near 1 = top/breakout area)
         # volatility contraction: recent-half ATR vs earlier-half ATR (<1 = contracting)
         half = lb // 2
@@ -141,8 +147,9 @@ def compute_features(close, high, low, volume, i, *, bench_close=None,
         w = _window(close, i, p)
         if w is not None:
             ma = float(w.mean())
-            ma_vals[p] = ma
-            feats[f"price_to_ma_{p}"] = px / ma - 1.0 if ma > 0 else np.nan
+            ma_vals[p] = ma                                    # kept for ma_compression even if excluded
+            if "price_to_ma" not in exclude:
+                feats[f"price_to_ma_{p}"] = px / ma - 1.0 if ma > 0 else np.nan
     if len(ma_vals) >= 2:
         vals = np.array(list(ma_vals.values()))
         feats["ma_compression"] = float((vals.max() - vals.min()) / px)

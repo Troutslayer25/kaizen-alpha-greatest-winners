@@ -32,6 +32,16 @@ def test_characterize_emits_all_descriptor_fields():
     assert d["annualized_return"] <= 1e4                       # capped, not 1e15
 
 
+def test_overnight_gaps_from_opens():
+    move, close, high, low, vol, bench = _series()
+    open_ = close.copy()
+    t = move.trough_idx + 10
+    open_[t] = close[t - 1] * 1.12                       # +12% overnight gap up
+    d = characterize_move(move, close, high, low, volume=vol, bench_close=bench, open_=open_)
+    assert d["overnight_gap_count"] >= 1 and d["largest_overnight_gap"] >= 0.10
+    assert np.isnan(characterize_move(move, close)["overnight_gap_count"])   # NaN without opens
+
+
 def test_inception_context_emits_all_fields_and_is_finite():
     move, close, high, low, vol, bench = _series()
     ctx = inception_context(move, close, high, low, volume=vol, bench_close=bench)

@@ -156,10 +156,18 @@ CREATE TABLE IF NOT EXISTS gws.moves (
   -- Query typed: (descriptors->>'num_pullbacks')::numeric, (inception->>'incept_above_sma200')::numeric.
   descriptors        JSONB,
   inception          JSONB,
+  detect_params      JSONB,                  -- {atr_period, min_duration, scales} detection provenance (Lineage m-10)
+  run_id             TEXT,                    -- optional detection-run tag (latest-run wins via delete-before-insert)
   UNIQUE (ticker_id, start_date, scale, detection_system)   -- natural key -> idempotent re-persist
 );
 CREATE INDEX IF NOT EXISTS ix_moves_descriptors ON gws.moves USING GIN (descriptors);
 CREATE INDEX IF NOT EXISTS ix_moves_inception   ON gws.moves USING GIN (inception);
+-- Expression btree indexes for the hot NUMERIC-range JSONB predicates (Lineage m-3): GIN(jsonb_ops)
+-- accelerates @>/? containment, NOT (bag->>k)::numeric ranges. Add more per observed query load.
+CREATE INDEX IF NOT EXISTS ix_moves_desc_magnitude
+  ON gws.moves (((descriptors ->> 'magnitude')::numeric));
+CREATE INDEX IF NOT EXISTS ix_moves_incept_sma200
+  ON gws.moves (((inception ->> 'incept_price_to_sma200')::numeric));
 CREATE INDEX IF NOT EXISTS ix_moves_ticker ON gws.moves (ticker_id, start_date);
 
 CREATE TABLE IF NOT EXISTS gws.move_clusters (

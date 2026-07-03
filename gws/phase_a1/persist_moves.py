@@ -13,6 +13,8 @@ from __future__ import annotations
 import json
 import math
 
+import numpy as np
+
 from gws.phase_a1.move_characterization import characterize_move, inception_context
 
 # Methodology version stamped into both JSONB bags (review F7): bump on ANY formula/window/threshold
@@ -20,15 +22,27 @@ from gws.phase_a1.move_characterization import characterize_move, inception_cont
 CHAR_VERSION = "a1.0"
 
 
+def _clean(v):
+    """Recursively coerce a value to JSON/JSONB-safe form (review m-5): NaN/Inf -> None, numpy
+    scalars -> Python scalars, nested dict/list handled — so a future descriptor returning
+    np.int64/np.bool_/nested structures can never crash json.dumps or Postgres NUMERIC/JSONB."""
+    if isinstance(v, (np.floating, float)):
+        f = float(v)
+        return None if (math.isnan(f) or math.isinf(f)) else f
+    if isinstance(v, (np.integer,)):
+        return int(v)
+    if isinstance(v, (np.bool_, bool)):
+        return bool(v)
+    if isinstance(v, dict):
+        return {k: _clean(x) for k, x in v.items()}
+    if isinstance(v, (list, tuple, np.ndarray)):
+        return [_clean(x) for x in v]
+    return v
+
+
 def _json_safe(d: dict) -> dict:
-    """Replace NaN/Inf with None so the dict is valid JSONB (Postgres rejects NaN)."""
-    out = {}
-    for k, v in d.items():
-        if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
-            out[k] = None
-        else:
-            out[k] = v
-    return out
+    """Make a dict valid JSONB (NaN/Inf -> None, numpy -> Python, nested-safe)."""
+    return {k: _clean(v) for k, v in d.items()}
 
 
 def move_to_row(move, ticker_id, index_to_date, descriptors: dict, inception: dict, *,
@@ -57,7 +71,7 @@ def move_to_row(move, ticker_id, index_to_date, descriptors: dict, inception: di
 
 
 def build_rows(moves, ticker_id, dates, close, high=None, low=None, volume=None,
-               bench_close=None, *, primary_scale: str | None = None) -> list[dict]:
+               bench_close=None, open_=None, *, primary_scale: str | None = None) -> list[dict]:
     """Characterize every move for one ticker/scale and return gws.moves row dicts.
 
     All series MUST be aligned to `dates` (same length, same trading-date vector). A misaligned
@@ -65,7 +79,7 @@ def build_rows(moves, ticker_id, dates, close, high=None, low=None, volume=None,
     index-based invariance test cannot see (review F2/m-8). Enforced here."""
     n = len(dates)
     for name, arr in (("close", close), ("high", high), ("low", low), ("volume", volume),
-                      ("bench_close", bench_close)):
+                      ("bench_close", bench_close), ("open_", open_)):
         if arr is not None and len(arr) != n:
             raise ValueError(f"build_rows: {name} length {len(arr)} != dates length {n} — every "
                              f"series must be aligned to the ticker's own trading-date vector")
@@ -74,7 +88,8 @@ def build_rows(moves, ticker_id, dates, close, high=None, low=None, volume=None,
         return dates[i]
     rows = []
     for m in moves:
-        desc = characterize_move(m, close, high, low, volume=volume, bench_close=bench_close)
+        desc = characterize_move(m, close, high, low, volume=volume, bench_close=bench_close,
+                                 open_=open_)
         inc = inception_context(m, close, high, low, volume=volume, bench_close=bench_close)
         rows.append(move_to_row(m, ticker_id, idx_to_date, desc, inc,
                                 is_primary_scale=(primary_scale is not None and m.scale == primary_scale)))
@@ -82,8 +97,9 @@ def build_rows(moves, ticker_id, dates, close, high=None, low=None, volume=None,
 
 
 def persist_moves(conn, ticker_id, moves, dates, close, high=None, low=None, volume=None,
-                  bench_close=None, *, primary_scale: str | None = None,
-                  detection_system: str = "mfe") -> int:
+                  bench_close=None, open_=None, *, primary_scale: str | None = None,
+                  detection_system: str = "mfe", detect_params: dict | None = None,
+                  run_id: str | None = None) -> int:
     """Characterize + persist a ticker's ENTIRE current move set into gws.moves.
 
     DELETE-before-insert per (ticker_id, detection_system) in one transaction (review F4/M-1):
@@ -91,8 +107,12 @@ def persist_moves(conn, ticker_id, moves, dates, close, high=None, low=None, vol
     known step_02 orphan bug). `moves` must therefore be ALL scales detected for this ticker on
     the current clean series. The JSONB bags are merged on any residual conflict so a degraded
     re-run never erases populated families (review M-2)."""
-    rows = build_rows(moves, ticker_id, dates, close, high, low, volume, bench_close,
+    rows = build_rows(moves, ticker_id, dates, close, high, low, volume, bench_close, open_,
                       primary_scale=primary_scale)
+    dp = json.dumps(detect_params) if detect_params is not None else None
+    for r in rows:                                       # detection provenance (Lineage m-10)
+        r["detect_params"] = dp
+        r["run_id"] = run_id
     cols = list(rows[0].keys()) if rows else []
     with conn.cursor() as cur:
         cur.execute("DELETE FROM gws.moves WHERE ticker_id=%s AND detection_system=%s",

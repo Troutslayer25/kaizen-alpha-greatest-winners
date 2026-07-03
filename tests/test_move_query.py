@@ -43,6 +43,15 @@ def test_has_missing_make_availability_explicit():
     assert "(inception ->> %s) IS NULL" in sql and params == ["incept_price_to_sma200"]
 
 
+def test_order_by_and_select_are_column_whitelisted():
+    # m-4: order_by/select are interpolated, so only known columns are allowed.
+    with pytest.raises(ValueError):
+        MoveQuery().order_by("total_pct_gain; DROP TABLE gws.moves")
+    with pytest.raises(ValueError):
+        MoveQuery().build(select="ticker_id, (SELECT password FROM users)")
+    MoveQuery().order_by("total_pct_gain").build(select="ticker_id, total_pct_gain")   # allowed
+
+
 def test_run_executes_against_a_connection():
     class _Cur:
         def fetchall(self):

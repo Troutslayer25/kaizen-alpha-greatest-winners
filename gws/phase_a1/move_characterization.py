@@ -35,8 +35,8 @@ DESCRIPTOR_FIELDS = (
     "up_day_share", "max_up_streak", "max_down_streak", "return_skew", "front_loaded_ratio",
     # during-move MA interaction (how the move rode / respected moving averages)
     "pct_days_above_sma50", "pct_days_above_sma200", "first_close_below_sma50_frac",
-    # big-up/down days (close-to-close; NOT true overnight gaps — see note)
-    "big_day_count", "largest_big_day",
+    # big-up/down days (close-to-close) AND true overnight gaps (open vs prior close)
+    "big_day_count", "largest_big_day", "overnight_gap_count", "largest_overnight_gap",
     # volume profile
     "vol_expansion", "up_down_vol_ratio", "vol_trend",
     # relative strength
@@ -87,12 +87,12 @@ def _pullbacks(seg, threshold, recovery: float = 0.5):
     return len(depths), float(max(depths)), float(np.mean(depths))
 
 
-def characterize_move(move, close, high=None, low=None, volume=None, bench_close=None, *,
-                      pullback_threshold: float = PULLBACK_THRESHOLD,
+def characterize_move(move, close, high=None, low=None, volume=None, bench_close=None,
+                      open_=None, *, pullback_threshold: float = PULLBACK_THRESHOLD,
                       gap_threshold: float = GAP_THRESHOLD, base_window: int = BASE_WINDOW) -> dict:
     """Return the full descriptor dict for one detected move. `move` needs .trough_idx/.peak_idx.
-    Optional high/low/volume/bench_close enable the gap, volume, and relative-strength families
-    (fields they need are NaN when the input is absent)."""
+    Optional high/low/volume/bench_close/open_ enable the gap, volume, relative-strength, and true-
+    overnight-gap families (fields they need are NaN when the input is absent)."""
     close = np.asarray(close, float)
     ti, pi = int(move.trough_idx), int(move.peak_idx)
     seg = close[ti:pi + 1]
@@ -139,6 +139,7 @@ def characterize_move(move, close, high=None, low=None, volume=None, bench_close
         "return_skew": float(_skew(rets)),
         "front_loaded_ratio": fl,
         "big_day_count": np.nan, "largest_big_day": np.nan,
+        "overnight_gap_count": np.nan, "largest_overnight_gap": np.nan,
         "vol_expansion": np.nan, "up_down_vol_ratio": np.nan, "vol_trend": np.nan,
         "rs_move": np.nan, "rs_at_peak_is_high": np.nan,
     }
@@ -147,6 +148,16 @@ def characterize_move(move, close, high=None, low=None, volume=None, bench_close
         gaps = np.abs(rets)                             # close-to-close big days (NOT true gaps)
         d["big_day_count"] = int(np.sum(gaps > gap_threshold))
         d["largest_big_day"] = float(gaps.max())
+
+    if open_ is not None and pi > ti:                   # true overnight gaps: open[t] vs close[t-1]
+        op = np.asarray(open_, float)
+        prev_close = close[ti:pi]                       # closes for days ti..pi-1
+        opens = op[ti + 1:pi + 1]                       # opens for days ti+1..pi
+        og = np.abs(opens / prev_close - 1.0)
+        og = og[np.isfinite(og)]
+        if og.size:
+            d["overnight_gap_count"] = int(np.sum(og > gap_threshold))
+            d["largest_overnight_gap"] = float(og.max())
 
     if volume is not None:
         volume = np.asarray(volume, float)
@@ -198,13 +209,19 @@ def _skew(x):
 # DISTINCT from the outcome descriptors above (which are post-hoc). Future-invariance is
 # unit-tested (tests/test_move_characterization.py).
 
+from gws.phase_a1.base_context import BASE_FIELDS, base_context
+
 INCEPTION_MA_PERIODS = (20, 50, 150, 200)
+# 40/20/20/20 weighting over 3/6/9/12-month trailing returns — the confirmed KA RS weighting.
+RS_WEIGHTS = ((63, 0.40), (126, 0.20), (189, 0.20), (252, 0.20))
 INCEPTION_FIELDS = tuple(f"incept_price_to_sma{p}" for p in INCEPTION_MA_PERIODS) + (
     "incept_price_to_ema8", "incept_price_to_ema21", "incept_sma50_slope_21",
     "incept_above_sma200", "incept_dist_from_high_252", "incept_dist_from_low_252",
-    "incept_atr_pct_14", "incept_rsi_14", "incept_vol_vs_avg_50", "incept_rs_vs_bench_63",
+    "incept_atr_pct_14", "incept_rsi_14", "incept_vol_vs_avg_50",
+    "incept_rs_vs_bench_63", "incept_rs_vs_bench_126", "incept_rs_vs_bench_252",
+    "incept_rs_composite", "incept_rs_line_new_high",
     "incept_base_depth_63", "incept_base_return_63",
-)
+) + BASE_FIELDS
 
 
 def _sma_rel(close, i, p):
@@ -278,16 +295,25 @@ def inception_context(move, close, high=None, low=None, volume=None, bench_close
         out["incept_vol_vs_avg_50"] = float(v[i] / avg) if avg > 0 else np.nan
     else:
         out["incept_vol_vs_avg_50"] = np.nan
-    if bench_close is not None and i - 63 >= 0:
+    # Relative strength vs bench at 63/126/252d + the 40/20/20/20 composite + RS-line-new-high.
+    for k in ("incept_rs_vs_bench_63", "incept_rs_vs_bench_126", "incept_rs_vs_bench_252",
+              "incept_rs_composite", "incept_rs_line_new_high"):
+        out[k] = np.nan
+    if bench_close is not None:
         b = np.asarray(bench_close, float)
-        if close[i - 63] > 0 and b[i] > 0 and b[i - 63] > 0:
-            out["incept_rs_vs_bench_63"] = float((close[i] / close[i - 63]) / (b[i] / b[i - 63]) - 1.0)
-        else:
-            out["incept_rs_vs_bench_63"] = np.nan
-    else:
-        out["incept_rs_vs_bench_63"] = np.nan
-    # pre-move base (PIT — data <= trough): depth of the decline into the trough and the base's
-    # own return. Relocated here from the descriptor bag so the outcome/PIT split is exact (F1b).
+        for lb, key in ((63, "incept_rs_vs_bench_63"), (126, "incept_rs_vs_bench_126"),
+                        (252, "incept_rs_vs_bench_252")):
+            if i - lb >= 0 and close[i - lb] > 0 and b[i] > 0 and b[i - lb] > 0:
+                out[key] = float((close[i] / close[i - lb]) / (b[i] / b[i - lb]) - 1.0)
+        if i - 252 >= 0:
+            rs_line = np.where(b[i - 252:i + 1] > 0, close[i - 252:i + 1] / b[i - 252:i + 1], np.nan)
+            if np.isfinite(rs_line).any():
+                out["incept_rs_line_new_high"] = float(rs_line[-1] >= np.nanmax(rs_line))
+    # RS composite is stock-only weighted momentum (queryable even without a benchmark).
+    if i - 252 >= 0 and all(close[i - lb] > 0 for lb, _ in RS_WEIGHTS):
+        out["incept_rs_composite"] = float(sum(w * (close[i] / close[i - lb] - 1.0) for lb, w in RS_WEIGHTS))
+
+    # pre-move base depth/return (PIT — data <= trough).
     base0 = max(0, i - 63)
     base_seg = close[base0:i + 1]
     if base_seg.size > 1:
@@ -296,4 +322,7 @@ def inception_context(move, close, high=None, low=None, volume=None, bench_close
         out["incept_base_return_63"] = float(close[i] / base_seg[0] - 1.0) if base_seg[0] > 0 else np.nan
     else:
         out["incept_base_depth_63"] = out["incept_base_return_63"] = np.nan
+
+    # base / stage structure (PIT, review MC-2)
+    out.update(base_context(close, i, high=high, low=low))
     return out

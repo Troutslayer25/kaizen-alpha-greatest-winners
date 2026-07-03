@@ -38,14 +38,25 @@ from gws.phase_a2.generic_features import compute_generic_features
 
 def _features_for_ticker(args):
     """Compute features for all sample points of ONE ticker (a picklable worker)."""
-    labels, idxs, series, bench, lookbacks, include_generic = args
+    labels, idxs, series, bench, lookbacks, include_generic, use_vec = args
+    vec, exclude = None, frozenset()
+    if use_vec:
+        from gws.phase_a2.features_vectorized import VECTORIZED_FIELDS, compute_features_vectorized
+        vec = compute_features_vectorized(series["close"], lookbacks=lookbacks)
+        exclude = set(VECTORIZED_FIELDS)                  # families served from the vectorized arrays
     out = []
     for lab, i in zip(labels, idxs):
         feats = compute_features(series["close"], series["high"], series["low"],
-                                 series["volume"], i, bench_close=bench, lookbacks=lookbacks)
+                                 series["volume"], i, bench_close=bench, lookbacks=lookbacks,
+                                 exclude=exclude)
         if include_generic:
             feats = {**feats, **compute_generic_features(
                 series["close"], series["high"], series["low"], series["volume"], i)}
+        if vec is not None:
+            for key, arr in vec.items():                  # merge vectorized families (finite == present)
+                v = arr[i]
+                if np.isfinite(v):
+                    feats[key] = float(v)
         out.append((lab, feats))
     return out
 
@@ -54,7 +65,7 @@ def build_feature_matrix(points: pd.DataFrame, series_by_ticker: dict, *,
                          bench_by_ticker: dict | None = None,
                          lookbacks=DEFAULT_LOOKBACKS,
                          include_generic: bool = True,
-                         n_jobs: int = 1, dtype=np.float32) -> pd.DataFrame:
+                         n_jobs: int = 1, dtype=np.float32, vectorized: bool = False) -> pd.DataFrame:
     """Compute features for each (ticker_id, as_of_index) point.
 
     `series_by_ticker[tk]` is a dict with 'close','high','low','volume' arrays.
@@ -73,7 +84,8 @@ def build_feature_matrix(points: pd.DataFrame, series_by_ticker: dict, *,
     tasks = []
     for tk, (labels, idxs) in by_ticker.items():
         bench = bench_by_ticker.get(tk) if bench_by_ticker else None
-        tasks.append((labels, idxs, series_by_ticker[tk], bench, lookbacks, include_generic))
+        tasks.append((labels, idxs, series_by_ticker[tk], bench, lookbacks, include_generic,
+                      vectorized))
 
     if n_jobs == 1 or len(tasks) <= 1:
         results = [_features_for_ticker(t) for t in tasks]

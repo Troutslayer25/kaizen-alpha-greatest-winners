@@ -19,6 +19,12 @@ injection-safe.
 from __future__ import annotations
 
 _OPS = {"<", "<=", ">", ">=", "=", "!=", "<>"}
+# order_by/select are interpolated (not bindable), so restrict them to a known column set (m-4).
+_COLUMNS = {"move_id", "ticker_id", "start_date", "peak_date", "total_pct_gain", "duration_days",
+            "smoothness_metric", "early_smoothness", "drawdown_timing", "mae", "max_intra_drawdown",
+            "detection_system", "scale", "trail_atr", "is_primary_scale", "is_open", "cluster_id",
+            "cluster_label", "context_score", "context_label", "magnitude_pctile", "pctile_basis",
+            "descriptors", "inception", "detect_params", "run_id"}
 
 
 class MoveQuery:
@@ -115,12 +121,18 @@ class MoveQuery:
 
     # --- terminal ---------------------------------------------------------------------------
     def order_by(self, expr, desc=True):
+        if expr not in _COLUMNS:
+            raise ValueError(f"order_by column {expr!r} not allowed")
         self._order = f"{expr} {'DESC' if desc else 'ASC'}"; return self
 
     def limit(self, n):
         self._limit = int(n); return self
 
     def build(self, select: str = "*"):
+        if select != "*":
+            bad = [c.strip() for c in select.split(",") if c.strip() not in _COLUMNS]
+            if bad:
+                raise ValueError(f"select columns not allowed: {bad}")
         sql = f"SELECT {select} FROM gws.moves"
         if self._where:
             sql += " WHERE " + " AND ".join(self._where)

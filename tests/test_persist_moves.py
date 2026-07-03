@@ -36,6 +36,17 @@ def test_move_to_row_maps_indices_to_dates_and_bags_json():
     assert json.loads(row["inception"])["incept_above_sma200"] == 1.0
 
 
+def test_json_safe_handles_numpy_scalars_and_nesting():
+    # m-5: a future descriptor returning numpy scalars / nested structures must not crash json.dumps.
+    m = _move()
+    desc = {"n": np.int64(3), "flag": np.bool_(True), "x": np.float64(1.5),
+            "bad": np.float64("nan"), "nested": {"a": np.int64(1)}}
+    row = move_to_row(m, 1, lambda i: _dates()[i], desc, {}, is_primary_scale=False)
+    d = json.loads(row["descriptors"])
+    assert d["n"] == 3 and d["flag"] is True and d["x"] == 1.5 and d["bad"] is None
+    assert d["nested"]["a"] == 1
+
+
 def test_build_rows_characterizes_and_flags_primary_scale():
     rng = np.random.default_rng(0)
     n = 420
