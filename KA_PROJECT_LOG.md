@@ -15,6 +15,18 @@ Entry format:
 
 ---
 
+## 2026-07-10 — Pattern-query surface review: direction affordance, candlestick backlog, intraday deferred, h007
+**Event type:** DECISION
+**Auditor or trigger:** Scott design question — "will the move-classification DB be searchable on a pattern basis (e.g. parabolic shorts in downtrend vs uptrend regimes; intraday demand signatures of winners vs non-winners), and should the study also classify downward moves?"
+**Finding:** Review against the built catalog concluded the pattern-search capability is ALREADY the design: `gws.moves` typed columns + descriptors/inception JSONB bags + GIN/expression indexes + the composable `MoveQuery` layer (regime via `context_label`, theme via `tickers_in`, PIT inception slices, outcome-filter tripwire). Winner-vs-non-winner contrast is the core two-dataset design (matched controls, failed lookalikes, setup_labels). Three real gaps: (1) no `direction` concept anywhere — "parabolic shorts" is unrepresentable, and adding it later means a natural-key migration + full re-persist of a populated catalog; (2) no literal candlestick bar-anatomy descriptors (closing range, tail ratios, spread); (3) no intraday data anywhere in the design — a new data workstream, modern-window-only regardless of source.
+**Remediation / decisions (scoped to respect the 2026-06-20 design-close + 2026-06-21 feature freeze):**
+1. **Schema affordance only for direction (approved option).** `gws.moves.direction` (`'up'`/`'down'`, DEFAULT `'up'`, CHECK-constrained) added to the schema and to the natural key; writer stamps `'up'`; `MoveQuery.direction()` predicate added (a population selector like scale/detection_system, NOT an outcome filter). The study remains UP-MOVES ONLY through all current phases. Down-move detection/classification is a FUTURE SIBLING pre-committed study (own hypotheses, decision matrix, gates) after Gate 0.5 — never folded into the current discovery run. Rationale: the catalog is empty today, so the column is one line now vs a key migration later; scope discipline is preserved because nothing down-related runs.
+2. **Candlestick bar-anatomy descriptor family → classification backlog** (freeze-safe additive per the backlog's standing rules; CHAR_VERSION bump on implementation). The A2 discovery feature net stays frozen.
+3. **Intraday: availability audit FIRST, no design work.** Before any intraday descriptor branch exists, audit FMP Ultimate intraday granularity/history depth/rate limits/storage vs UW-era capture. Any eventual branch is modern-window-only and follows the fundamental-branch availability pattern (NULL in deep history). Decision after the audit + Gate 0.5.
+4. **h007 sealed** — Scott's pre-data prior on intraday/candlestick demand signatures goes into the sealed-hypothesis vault (plaintext private, hash committed), tested at B3 like h001–h006. Zero researcher-DoF cost.
+**Resolution:** Design freeze and Gate 0.5 sequencing intact; master doc unchanged by design (no current-study methodology changed). Implementation limited to the direction affordance + backlog entry.
+**Scott sign-off:** approved 2026-07-10 (session Q&A: schema-affordance-only / audit-first / seal-h007)
+
 ## 2026-06-21 — Feature net FROZEN + risk re-ranking (review feedback)
 **Event type:** DECISION
 **Auditor or trigger:** External review (9.2/10) of the 2026-06-21 review package

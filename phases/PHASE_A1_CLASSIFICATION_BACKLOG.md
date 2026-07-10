@@ -24,6 +24,11 @@
   expression btree indexes on hot JSONB fields.
 
 ## REMAINING (small, honest)
+- **Candlestick bar-anatomy descriptor family (2026-07-10):** per-bar demand tells, aggregated over
+  the move and snapshotted at inception — closing range within bar ((close−low)/(high−low)), upper/
+  lower tail ratios, bar spread vs ATR, share of days closing in the top quartile of their range,
+  count of high-volume+high-closing-range days. Daily bars only (intraday is a separate, audit-gated
+  workstream — see project log 2026-07-10). Additive; bump CHAR_VERSION; future-invariance tested.
 - **Driver open-loading:** `detect_moves_for_ticker` doesn't yet SELECT `open`; the overnight-gap
   fields populate only when a caller passes `open_` to persist. One-line SELECT add when the
   orchestrator is written.
