@@ -22,9 +22,9 @@ _OPS = {"<", "<=", ">", ">=", "=", "!=", "<>"}
 # order_by/select are interpolated (not bindable), so restrict them to a known column set (m-4).
 _COLUMNS = {"move_id", "ticker_id", "start_date", "peak_date", "total_pct_gain", "duration_days",
             "smoothness_metric", "early_smoothness", "drawdown_timing", "mae", "max_intra_drawdown",
-            "detection_system", "scale", "trail_atr", "is_primary_scale", "is_open", "cluster_id",
-            "cluster_label", "context_score", "context_label", "magnitude_pctile", "pctile_basis",
-            "descriptors", "inception", "detect_params", "run_id"}
+            "detection_system", "scale", "direction", "trail_atr", "is_primary_scale", "is_open",
+            "cluster_id", "cluster_label", "context_score", "context_label", "magnitude_pctile",
+            "pctile_basis", "descriptors", "inception", "detect_params", "run_id"}
 
 
 class MoveQuery:
@@ -83,6 +83,11 @@ class MoveQuery:
 
     def scale(self, scale):
         self._where.append("scale = %s"); self._params.append(scale); return self
+
+    def direction(self, direction="up"):
+        """Population selector like scale/detection_system, NOT an outcome filter (log 2026-07-10).
+        The current catalog is 'up'-only; 'down' is reserved for the sibling down-move study."""
+        self._where.append("direction = %s"); self._params.append(direction); return self
 
     def significant_above(self, pctile):
         # outcome-derived AND only valid under the CF-3 rule — require a non-full-sample basis.

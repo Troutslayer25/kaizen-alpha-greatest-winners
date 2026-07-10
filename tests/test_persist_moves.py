@@ -31,6 +31,10 @@ def test_move_to_row_maps_indices_to_dates_and_bags_json():
     assert row["ticker_id"] == 42
     assert row["start_date"] == dates[300] and row["peak_date"] == dates[390]
     assert row["detection_system"] == "mfe" and row["is_primary_scale"] is True
+    assert row["direction"] == "up"          # log 2026-07-10: current study stamps 'up' only
+    down = move_to_row(m, 42, lambda i: dates[i], desc, inc, is_primary_scale=True,
+                       direction="down")     # affordance for the future sibling down-move study
+    assert down["direction"] == "down"
     d = json.loads(row["descriptors"])
     assert d["num_pullbacks"] == 2 and d["bad"] is None          # NaN -> JSON null (valid JSONB)
     assert json.loads(row["inception"])["incept_above_sma200"] == 1.0

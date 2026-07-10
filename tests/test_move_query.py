@@ -38,6 +38,15 @@ def test_outcome_filter_tripwire():
     assert MoveQuery().cluster(3).uses_outcome_filters is True     # M-4: cluster_id is post-hoc shape
 
 
+def test_direction_is_population_selector_not_outcome_filter():
+    # log 2026-07-10: direction slices the catalog population like scale/detection_system.
+    q = MoveQuery().direction("down").regime("risk_off")
+    sql, params = q.build()
+    assert "direction = %s" in sql and "context_label = %s" in sql
+    assert params == ["down", "risk_off"] and q.uses_outcome_filters is False
+    MoveQuery().order_by("direction").build(select="ticker_id, direction")   # whitelisted
+
+
 def test_min_trend_quality_filter():
     q = MoveQuery().min_trend_quality(0.6)
     sql, params = q.build()

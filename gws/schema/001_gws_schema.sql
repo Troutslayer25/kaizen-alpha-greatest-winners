@@ -135,6 +135,14 @@ CREATE TABLE IF NOT EXISTS gws.moves (
   mae                NUMERIC,                -- max adverse excursion below start (recorded, not gated)
   max_intra_drawdown NUMERIC,                -- diagnostic/comparative (drawdown from running peak)
   detection_system   TEXT    NOT NULL,       -- 'mfe' (canonical) | 'atr_swing' | 'absolute_return' (cross-check)
+  direction          TEXT    NOT NULL DEFAULT 'up'
+                       CONSTRAINT ck_moves_direction CHECK (direction IN ('up','down')),
+                                             -- Catalog affordance (log 2026-07-10): the CURRENT study detects UP
+                                             -- moves only (trough-anchored MFE) and every writer stamps 'up'.
+                                             -- 'down' is reserved for a future SIBLING pre-committed down-move
+                                             -- study — in the natural key now (catalog is empty; one line today
+                                             -- vs a key migration + full re-persist later) so a down-move writer
+                                             -- can never collide with or delete the up catalog.
   scale              TEXT    NOT NULL DEFAULT 'none',  -- MFE multi-scale tag (e.g. 'trail_6'); 'none' for non-MFE.
                                              -- NOT NULL so the UNIQUE natural key below works (Postgres treats
                                              -- NULLs as distinct, which would defeat ON CONFLICT for non-MFE writers).
@@ -168,8 +176,23 @@ CREATE TABLE IF NOT EXISTS gws.moves (
   inception          JSONB,
   detect_params      JSONB,                  -- {atr_period, min_duration, scales} detection provenance (Lineage m-10)
   run_id             TEXT,                    -- optional detection-run tag (latest-run wins via delete-before-insert)
-  UNIQUE (id_domain, ticker_id, start_date, scale, detection_system)   -- natural key -> idempotent re-persist
+  CONSTRAINT uq_moves_natural_key                                       -- natural key -> idempotent re-persist
+    UNIQUE (id_domain, ticker_id, start_date, scale, detection_system, direction)
 );
+-- Upgrade path (log 2026-07-10): installs that predate the direction column get it added and the
+-- natural key widened, idempotently. New installs take the CREATE TABLE shape above and skip this.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                 WHERE table_schema = 'gws' AND table_name = 'moves' AND column_name = 'direction') THEN
+    ALTER TABLE gws.moves ADD COLUMN direction TEXT NOT NULL DEFAULT 'up'
+      CONSTRAINT ck_moves_direction CHECK (direction IN ('up','down'));
+    ALTER TABLE gws.moves
+      DROP CONSTRAINT IF EXISTS moves_id_domain_ticker_id_start_date_scale_detection_system_key;
+    ALTER TABLE gws.moves ADD CONSTRAINT uq_moves_natural_key
+      UNIQUE (id_domain, ticker_id, start_date, scale, detection_system, direction);
+  END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS ix_moves_descriptors ON gws.moves USING GIN (descriptors);
 CREATE INDEX IF NOT EXISTS ix_moves_inception   ON gws.moves USING GIN (inception);
 -- Expression btree indexes for the hot NUMERIC-range JSONB predicates (Lineage m-3): GIN(jsonb_ops)

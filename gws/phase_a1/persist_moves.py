@@ -46,12 +46,16 @@ def _json_safe(d: dict) -> dict:
 
 
 def move_to_row(move, ticker_id, index_to_date, descriptors: dict, inception: dict, *,
-                is_primary_scale: bool, id_domain: str = "norgate") -> dict:
+                is_primary_scale: bool, id_domain: str = "norgate",
+                direction: str = "up") -> dict:
     """Map a MoveMFE + its characterization to a gws.moves row dict. `index_to_date` maps a bar
     index to a calendar date (date object). `id_domain` (review C1) tags the ID domain so a
-    cross-domain persist can never collide on the natural key."""
+    cross-domain persist can never collide on the natural key. `direction` (log 2026-07-10) is a
+    catalog affordance in the natural key — the current study writes 'up' only; a future sibling
+    down-move study writes 'down' and can never collide with or delete the up catalog."""
     return {
         "id_domain": id_domain,
+        "direction": direction,
         "ticker_id": int(ticker_id),
         "start_date": index_to_date(int(move.trough_idx)),
         "peak_date": index_to_date(int(move.peak_idx)),
@@ -76,7 +80,7 @@ def move_to_row(move, ticker_id, index_to_date, descriptors: dict, inception: di
 
 def build_rows(moves, ticker_id, dates, close, high=None, low=None, volume=None,
                bench_close=None, open_=None, *, primary_scale: str | None = None,
-               id_domain: str = "norgate") -> list[dict]:
+               id_domain: str = "norgate", direction: str = "up") -> list[dict]:
     """Characterize every move for one ticker/scale and return gws.moves row dicts.
 
     All series MUST be aligned to `dates` (same length, same trading-date vector). A misaligned
@@ -97,6 +101,7 @@ def build_rows(moves, ticker_id, dates, close, high=None, low=None, volume=None,
                                  open_=open_)
         inc = inception_context(m, close, high, low, volume=volume, bench_close=bench_close)
         rows.append(move_to_row(m, ticker_id, idx_to_date, desc, inc, id_domain=id_domain,
+                                direction=direction,
                                 is_primary_scale=(primary_scale is not None and m.scale == primary_scale)))
     return rows
 
@@ -104,7 +109,8 @@ def build_rows(moves, ticker_id, dates, close, high=None, low=None, volume=None,
 def persist_moves(conn, ticker_id, moves, dates, close, high=None, low=None, volume=None,
                   bench_close=None, open_=None, *, primary_scale: str | None = None,
                   detection_system: str = "mfe", detect_params: dict | None = None,
-                  run_id: str | None = None, id_domain: str = "norgate") -> int:
+                  run_id: str | None = None, id_domain: str = "norgate",
+                  direction: str = "up") -> int:
     """Characterize + persist a ticker's ENTIRE current move set into gws.moves.
 
     DELETE-before-insert per (id_domain, ticker_id, detection_system) in one transaction (review
@@ -115,16 +121,18 @@ def persist_moves(conn, ticker_id, moves, dates, close, high=None, low=None, vol
     save you (review M3: the DELETE runs first, so ON CONFLICT can only fire on an intra-batch
     natural-key duplicate — which would itself be a bug, not something to silently merge)."""
     rows = build_rows(moves, ticker_id, dates, close, high, low, volume, bench_close, open_,
-                      primary_scale=primary_scale, id_domain=id_domain)
+                      primary_scale=primary_scale, id_domain=id_domain, direction=direction)
     dp = json.dumps(detect_params) if detect_params is not None else None
     for r in rows:                                       # detection provenance (Lineage m-10)
         r["detect_params"] = dp
         r["run_id"] = run_id
     cols = list(rows[0].keys()) if rows else []
-    key = ("id_domain", "ticker_id", "start_date", "scale", "detection_system")
+    key = ("id_domain", "ticker_id", "start_date", "scale", "detection_system", "direction")
     with conn.cursor() as cur:
-        cur.execute("DELETE FROM gws.moves WHERE id_domain=%s AND ticker_id=%s AND detection_system=%s",
-                    (id_domain, ticker_id, detection_system))
+        # DELETE is direction-scoped so a future down-move persist can never wipe the up catalog.
+        cur.execute("DELETE FROM gws.moves WHERE id_domain=%s AND ticker_id=%s AND detection_system=%s "
+                    "AND direction=%s",
+                    (id_domain, ticker_id, detection_system, direction))
         if not rows:
             return 0
         placeholders = ", ".join(f"%({c})s" for c in cols)
