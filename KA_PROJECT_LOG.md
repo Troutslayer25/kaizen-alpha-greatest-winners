@@ -15,6 +15,16 @@ Entry format:
 
 ---
 
+## 2026-07-11 — h009 + h010 sealed + neutral reward/risk response-curve question registered
+**Event type:** DECISION
+**Auditor or trigger:** Scott design discussion (ATR / ATR-deviation; MA-extension for entry and exit)
+**Finding / remediation:** Two new pre-data priors, handled with the established split (directional bets sealed, neutral instrument registered openly). Sealed separately so B3 scores them independently:
+1. **h009 sealed** (ATR-related) and **h010 sealed** (MA-extension-related) — hashes committed, plaintexts local/gitignored, subjects private by design.
+2. **Direction-free open question logged** at `research/open_questions/reward_risk_response_curves.md`: read the Method-8 forward-MFE/MAE surface (`gws.entry_candidates`) as response curves over volatility state (ATR% + ATR-vs-own-baseline) and swept MA-extension, both tails informative (entry AND exit sides — the exit read is new framing, not a new instrument), with a REQUIRED move-age/gain-so-far control so a mechanical trailing-stop artifact can't masquerade as signal. To fold into the A3 entry-point pre-commit when written (post-Gate-0.5). All inputs are already in the frozen A2 net / inception catalog — no feature added, detector unchanged, nothing runs.
+3. Settled-list check recorded: extension-based exits were NOT falsified by the pipeline graduated-exit backtests; the withdrawn ATR% screen gate (2026-05-11) constrains production filters, not discovery features.
+**Resolution:** Sealed + registered; nothing runs.
+**Scott sign-off:** approved 2026-07-11 (session Q&A)
+
 ## 2026-07-11 — h008 sealed + neutral transfer-temporal-distance question registered
 **Event type:** DECISION
 **Auditor or trigger:** Scott design discussion (cycle-conditional setup efficacy)
