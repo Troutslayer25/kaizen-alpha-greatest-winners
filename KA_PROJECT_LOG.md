@@ -15,6 +15,15 @@ Entry format:
 
 ---
 
+## 2026-07-11 — h008 sealed + neutral transfer-temporal-distance question registered
+**Event type:** DECISION
+**Auditor or trigger:** Scott design discussion (cycle-conditional setup efficacy)
+**Finding / remediation:** A new pre-data prior from Scott, handled with the h007 split — directional bet sealed, neutral instrument registered openly:
+1. **h008 sealed** (hash committed, plaintext local/gitignored). Subject private by design.
+2. **Direction-free open question logged** at `research/open_questions/transfer_temporal_distance.md`: extend the pre-committed §12.1 transfer test from one early→late split to a transfer CURVE over a ladder of train→test temporal distances, run per feature class (emotional vs structural), and compare temporal-proximity weighting vs similarity-matched regime analogy OOS. To be folded into the Phase A3 regime-conditioned analysis pre-commit when that [FORWARD] spec is written (post-Gate-0.5) — no instrument built now; feature freeze and Gate 0.5 sequencing intact. Known constraints recorded in the note: cycle boundaries are hindsight-defined (deployment claims must be calendar-time/PIT), circularity guard on era definitions, Market School machinery stays sealed until B3, deep history load-bearing for the k-ladder.
+**Resolution:** Sealed + registered; nothing runs.
+**Scott sign-off:** approved 2026-07-11 (session Q&A)
+
 ## 2026-07-10 — Pattern-query surface review: direction affordance, candlestick backlog, intraday deferred, h007
 **Event type:** DECISION
 **Auditor or trigger:** Scott design question — "will the move-classification DB be searchable on a pattern basis (e.g. parabolic shorts in downtrend vs uptrend regimes; intraday demand signatures of winners vs non-winners), and should the study also classify downward moves?"
