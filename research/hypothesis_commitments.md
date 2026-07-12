@@ -17,8 +17,13 @@ Verify: `sha256sum research/hypotheses/sealed/<id>.md`
 | h004 | 1a3d8d582d43ebc261757b889401d2525371442376444131b174ab46b5107c4b | 2026-07-03 |
 | h005 | 751b76b8818ce41d2a3533d903ed5b0095fa29d6115aab18281728d4e15517a3 | 2026-07-03 |
 | h006 | 9f0f40c7d1026a5e3fb80cfee35c36810022007ca413a723fbdef102497e8f94 | 2026-07-03 |
-| h007 | 546a771f22e4f1b1a1e43265f9e58198cf7869a53c849c9c16063a082422383d | 2026-07-10 |
-| h008 | 3f556dc5dc4f9c86ea6e99f712a3686a872e53f571a53aa146c9d962ae513c94 | 2026-07-11 |
-| h009 | 35bcda350b6317723fad189098e4a1cbb605fd159cca42f9475320dcdf7fafb5 | 2026-07-11 |
-| h010 | 8ccb7997b8844aaa71130e793776fd0a747243fd0fd987b8fa8184d767523e83 | 2026-07-11 |
+| h007 | 87ec01ea51d039fb8058670f16f018124c4c69555a1e94effba5dc1514b6a68c | 2026-07-10, restructured 2026-07-12 |
+| h008 | 63a215ad126a7a1ec34bd191572833cbcf1c732147d52c5e201b78b1b91a5496 | 2026-07-11, restructured 2026-07-12 |
+| h009 | 23051f151093947573e7ed4a3af12d22c8e22e2efd5b9bccd45880307cfe4bbd | 2026-07-11, restructured 2026-07-12 |
+| h010 | 5d072977c5b691da0af47f14fb5b1f0ecc9b16b488b716eaf439cd2dc8c91707 | 2026-07-11, restructured 2026-07-12 |
 | h011 | c3f505968a369dda0a9b156c9f4256a4007a65e1fba18979cd3de02d7ab3a4b1 | 2026-07-12 |
+
+h007–h010 were restructured 2026-07-12 into the standard template (sub-hypotheses, failure
+hypothesis, null, acceptance/success criteria) — pre-data, content-preserving; directional
+bets unchanged. Original hashes remain in git history (commits 6bb7288, d9d4d0f, d4aa903) as
+the earlier precedence proof; the current hashes above are authoritative for B3 verification.

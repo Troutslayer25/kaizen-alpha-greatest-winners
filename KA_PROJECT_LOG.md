@@ -15,6 +15,13 @@ Entry format:
 
 ---
 
+## 2026-07-12 — h007–h010 restructured to the standard sealed-hypothesis template
+**Event type:** DECISION
+**Auditor or trigger:** Scott request, after h011 arrived as a fully-structured document
+**Finding / remediation:** h007–h010 plaintexts rewritten into the h011 template (numbered sub-hypotheses with predictions, failure hypothesis, null hypothesis, acceptance/success criteria phrased in the study's own instrument vocabulary — findings-hierarchy tiers, family-FDR, required controls, per-sub-hypothesis partial credit). Content-preserving: Scott's verbatim statements and all directional bets unchanged; structure only. Still pre-data (pre-Gate-0.5), so precedence is intact. New hashes committed; original hashes remain in git history as the earlier precedence proof (noted in `hypothesis_commitments.md`). Done in-session rather than by an external agent: the plaintexts already existed in this design session's context, so no new exposure was created, and the acceptance criteria could be bound to the study's actual evaluation machinery.
+**Resolution:** Re-sealed; nothing runs.
+**Scott sign-off:** approved 2026-07-12 (session request)
+
 ## 2026-07-12 — h011 sealed (complete written prior document from Scott)
 **Event type:** DECISION
 **Auditor or trigger:** Scott delivered a fully-written, self-contained hypothesis document marked LOCKED for post-study evaluation
