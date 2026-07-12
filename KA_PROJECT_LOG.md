@@ -15,6 +15,13 @@ Entry format:
 
 ---
 
+## 2026-07-12 — h011 sealed (complete written prior document from Scott)
+**Event type:** DECISION
+**Auditor or trigger:** Scott delivered a fully-written, self-contained hypothesis document marked LOCKED for post-study evaluation
+**Finding / remediation:** Sealed verbatim as **h011** (hash committed, plaintext local/gitignored; subject private by design). No neutral registration needed: the relevant measurement input already appears in the open market-context candidate set (`research/market_context_inputs.md`), so the instrument side was registered before this prior existed. Vocabulary note recorded: Scott's document self-describes as a "lockbox" item; the GWS lockbox proper is the held-out time period (§12.7) — this is a sealed-hypothesis-vault item, evaluated per its own status field only after the primary study completes. Scope note: several of the document's research questions extend beyond GWS into the broader market-regime framework; per the document, all are post-study evaluation.
+**Resolution:** Sealed; nothing runs.
+**Scott sign-off:** approved 2026-07-12 (document provided directly)
+
 ## 2026-07-11 — h009 + h010 sealed + neutral reward/risk response-curve question registered
 **Event type:** DECISION
 **Auditor or trigger:** Scott design discussion (ATR / ATR-deviation; MA-extension for entry and exit)
