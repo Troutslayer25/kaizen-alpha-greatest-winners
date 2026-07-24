@@ -15,6 +15,33 @@ Entry format:
 
 ---
 
+## 2026-07-24 (late) — CELL C REVIEW RULED: control vindicated, agent hypothesis REFUTED, premise UNSETTLED; work package W1–W5 to Scott
+**Event type:** ESCALATION resolved to a decision package (Scott rules)
+**Auditor or trigger:** Cell C panel (ka-premise lead, ka-research-integrity, ka-quant) on
+the T2 settling FAIL. Verbatim: `phases/gate0_a1_review/CELL_C_RULINGS.md`; synthesis:
+`CELL_C_SYNTHESIS.md`; the referee's synthetic proof scripts preserved alongside.
+**Decisive finding (integrity, blind synthetic with the study's own code):** the k=5 shift
+control is CORRECTLY CALIBRATED — planted known-clean signal collapses to 0.519; a planted
+anchor feature fires it (0.705); clean+anchor reproduces the live signature; removing the
+anchor family restores collapse. **The implementation agent's "control mis-designed"
+hypothesis is REFUTED and recorded as such.** The B-anchor-1 FAIL stands verbatim: the
+pilot's forward signal is substantially anchor-family-driven until the re-scoped test says
+otherwise. (Premise and quant had read the control as void; overruled by the synthetic.)
+**Unanimous in effect:** B-anchor-2's 0/12 is NOT valid thesis-reversal evidence (61-vs-5
+arm asymmetry + the addendum's own concept-level rule unapplied — logged non-compliance),
+but emotional invariance is DEMOTED to an open, probably-false question. Premise =
+UNSETTLED. Two runner non-compliances logged: missing trail_2/6/15 scale-invariance label;
+era cap relies on upstream lockbox truncation (explicit <2022-01-01 cap required).
+**Work package to Scott (pre-commit before running, pilot-scale):** W1 re-scoped
+B-anchor-1 (shift@5 on the location-residualized set, synthetic proof attached, FAIL
+preserved); W2 lead-time-restricted AUC (positives lead∈[5,20] vs negatives ≥60 bars from
+any trough via gws.moves join; T-21/T-63 offset collapse; decision matrix vs the 0.577
+composition floor); W3 B-anchor-2 redo at matched effective dimensionality; W4 compliance
+items; W5 B-anchor-3 point-of-strength pre-commit (winners vs configuration-matched failed
+breakouts — the decisive continue-vs-stop gate).
+**Resolution:** OPEN — awaiting Scott's signature on W1–W5. No gws compute until signed.
+**Scott sign-off:** PENDING.
+
 ## 2026-07-24 (night) — T2 SETTLING RESULT: B-anchor-1 FAIL, B-anchor-2 NOT SUPPORTED → Cell C review convenes
 **Event type:** HALT (pre-committed bar fired)
 **Auditor or trigger:** `run_a1_anchor_settling.py` on the forward `setup_labels` frame
