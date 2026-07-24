@@ -56,3 +56,28 @@ robustness. THE continue-vs-stop gate. Its parameter freeze gets its own documen
 (`phases/B_ANCHOR3_PRECOMMIT.md`) and Scott sign-off before implementation.
 
 *No result below alters this spec after the fact; deviations get dated addenda.*
+
+---
+
+## AMENDMENT 2026-07-24 (Scott, in-session) — intent correction: no bottom-prediction bar
+
+Scott clarified the study's intent verbatim-in-substance: identify meaningful moves
+(≥20%-class, no meaningful correction, ATR-defined — i.e., the existing detector),
+classify by size/momentum/amplitude (the existing clustering dims), then REWIND to ask
+whether characteristics preceded the move's beginning. Predicting troughs from arbitrary
+days was never the intent; W2's trough-prediction kill-bar is WITHDRAWN as a premise test.
+
+**W2′ — REWIND analysis (replaces W2 as the discovery-frame test):**
+- Cases = resolved trail_6 moves (stratified names); controls = the persisted MINIMAL
+  matched controls (same-date, different ticker — calendar composition neutralized by
+  construction).
+- Features measured at T-0 (reference only; known anchor-contaminated), **T-5, T-21,
+  T-63 bars BEFORE** the case trough / control date; points needing <252 bars history drop.
+- Primary metric: pooled AUC on the **location-residualized** feature set per offset;
+  full-set AUC and top-10 ticker-clustered univariate reported per offset.
+- **Pre-committed reading:** the move was "visible being born" iff AUC_res(T-21) >
+  shuffle_hi + 0.05, with the T-5→T-63 decay profile reported as-is. No single-offset
+  cherry-pick: all four offsets publish together.
+- W1 unchanged (runs as spec'd). W3 deferred to the corrected frame. **W5 / B-anchor-3
+  (point-of-strength) is promoted to the study's load-bearing tradeability gate** — the
+  rewind answers "visible at birth?"; the pivot test answers "visible where Scott buys?".
