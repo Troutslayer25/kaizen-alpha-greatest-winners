@@ -31,10 +31,17 @@ TARGET_INDEXES = {
 # non-empty — a Russell series that only starts in the 2000s would otherwise pass GO while the
 # study leans on deep history. Confirm/adjust against the installed norgatedata version; a miss
 # is a documented NO-GO for that index, not a warning.
+# AMENDED 2026-07-24 (Scott, Step-0 run on KA-Workstation, norgatedata 1.0.77): original values
+# predated vendor/index inception. Evidence: sp600 index launched 1994-10-28 (Norgate has it from
+# inception); Russell constituent flags begin exactly 1990-07-03 for GE/XOM/IBM (series start,
+# July 1990 reconstitution); NDX-100 flags begin 1993-10-01 for AAPL/MSFT/INTC (members since the
+# 1980s → vendor series start, not membership start). All 7 kept; pre-1990 eras are covered by the
+# pre-committed all-listed-equity deep-era universe rule, not the index gate. Ingest must treat
+# dates BEFORE these starts as UNKNOWN membership, never non-member.
 REQUIRED_START = {
-    "sp500": "1990-01-01", "sp400": "1994-01-01", "sp600": "1994-01-01",
-    "r1000": "1990-01-01", "r2000": "1990-01-01", "r3000": "1990-01-01",
-    "ndx100": "1990-01-01",
+    "sp500": "1990-01-01", "sp400": "1994-01-01", "sp600": "1994-10-28",
+    "r1000": "1990-07-03", "r2000": "1990-07-03", "r3000": "1990-07-03",
+    "ndx100": "1993-10-01",
 }
 
 

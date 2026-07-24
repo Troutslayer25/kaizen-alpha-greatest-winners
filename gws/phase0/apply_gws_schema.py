@@ -20,7 +20,9 @@ DDL_PATH = pathlib.Path(__file__).resolve().parents[2] / "gws" / "schema" / "001
 def main() -> None:
     sql = DDL_PATH.read_text(encoding="utf-8")
     ka_execute("CREATE SCHEMA IF NOT EXISTS gws")
-    ka_execute(sql)  # psycopg3 runs the multi-statement DDL block in one shot
+    # ka_execute passes `params or ()` — the empty tuple makes psycopg scan for placeholders,
+    # so literal % in DDL (LIKE 'frozen_train:%' CHECK) must be doubled (found 2026-07-24).
+    ka_execute(sql.replace("%", "%%"))  # psycopg3 runs the multi-statement DDL block in one shot
     tables = ka_query(
         "SELECT table_name FROM information_schema.tables "
         "WHERE table_schema='gws' ORDER BY table_name"

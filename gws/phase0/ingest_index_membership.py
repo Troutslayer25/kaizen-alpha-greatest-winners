@@ -102,32 +102,40 @@ def _load_entities() -> dict:
                                   "last_quoted_date": r["last_quoted_date"]} for r in rows}
 
 
-def ingest(dry_run: bool = False, max_unmapped_frac: float = 0.05) -> dict:
+def ingest(dry_run: bool = False, max_unmapped_frac: float = 0.05, workers: int = 24) -> dict:
     import norgatedata  # ka-runner only
+    from concurrent.futures import ThreadPoolExecutor
+
     from ka_lib.db import ka_upsert  # ka-runner only
 
     from gws.phase0.verify_norgate_index_coverage import TARGET_INDEXES
 
     entities = _load_entities()
 
-    def assetid_of(sym):
+    # Norgate fetches are prefetched on a thread pool (NDU calls are local-socket I/O and
+    # release the GIL); build_interval_rows then consumes plain dict lookups so the pure
+    # core stays sequential and testable. ~34k member-slots sequential ≈ 3h; threaded ≈ min.
+    def _fetch(sym, label):
         try:
-            return norgatedata.assetid(sym)
+            aid = norgatedata.assetid(sym)
         except Exception:
-            return None
-
-    def constituent_series(sym, label):
-        return norgatedata.index_constituent_timeseries(
+            return sym, None, None
+        df = norgatedata.index_constituent_timeseries(
             sym, label, timeseriesformat="pandas-dataframe")
+        return sym, aid, df
 
     n_rows = n_members = 0
     all_unmapped = []
     for name, (label, watchlist) in TARGET_INDEXES.items():
         members = norgatedata.watchlist_symbols(watchlist)
+        with ThreadPoolExecutor(max_workers=workers) as ex:
+            fetched = list(ex.map(lambda s: _fetch(s, label), members))
+        aids = {s: a for s, a, _ in fetched}
+        dfs = {s: d for s, _, d in fetched}
         rows, unmapped = build_interval_rows(
             members, entities, index_name=name,
-            constituent_series=lambda s: constituent_series(s, label),
-            assetid_of=assetid_of)
+            constituent_series=dfs.get,
+            assetid_of=aids.get)
         if rows and not dry_run:
             ka_upsert("gws.index_membership", rows,
                       conflict_columns=["entity_id", "index_name", "from_date"])
@@ -163,8 +171,10 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--max-unmapped-frac", type=float, default=0.05)
+    ap.add_argument("--workers", type=int, default=24)
     args = ap.parse_args()
-    result = ingest(dry_run=args.dry_run, max_unmapped_frac=args.max_unmapped_frac)
+    result = ingest(dry_run=args.dry_run, max_unmapped_frac=args.max_unmapped_frac,
+                    workers=args.workers)
     return 1 if result.get("halt") else 0
 
 

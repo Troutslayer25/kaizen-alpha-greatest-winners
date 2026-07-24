@@ -15,6 +15,18 @@ Entry format:
 
 ---
 
+## 2026-07-24 — Phase 0 real-data work opened on KA-Workstation; Step-0 GO
+**Event type:** DECISION + GATE PASSED (Step-0)
+**Auditor or trigger:** Scott ("start the study"), on KA-Workstation local DB (post-G8), NDU installed, norgatedata 1.0.77
+**Finding:** Step-0 verifier first run returned NO-GO on 5/7 indexes against the pre-committed REQUIRED_START values. Targeted evidence showed every miss equals vendor/index inception, not a coverage gap: S&P 600 launched 1994-10-28 (Norgate from inception); Russell constituent flags begin exactly 1990-07-03 for GE/XOM/IBM (July 1990 reconstitution = series start); NDX-100 flags begin 1993-10-01 for AAPL/MSFT/INTC (members since the 1980s → vendor series start). S&P 500 depth is strong (sampled earliest 1957-03-04).
+**Remediation / decisions ratified by Scott:**
+- **Deep-era universe rule pre-committed: all-listed-equity.** Pre-index eras use all listed equities passing data-validity gates; era boundaries documented (1962 AMEX, 1982 NASDAQ breadth jumps). The index gate applies only from each index's vendor series start.
+- **REQUIRED_START amended to vendor/inception dates** (sp600 1994-10-28; r1000/r2000/r3000 1990-07-03; ndx100 1993-10-01), all 7 indexes kept. Re-run: clean GO, delisted members sampled on every index.
+- **UNKNOWN-vs-non-member rule:** dates before an index's series start are UNKNOWN membership, never non-member. Absence of an interval row is only evidence of non-membership on/after that index's vendor start; `universe_eligibility` must encode this.
+- **FRED ingest deferred** — deep-regime inputs stay price/breadth-derived unless a pre-committed spec later requires macro series.
+**Resolution:** Step-0 GO. Next: Step-1 membership ingest (parallelized fetch layer for the 32-core workstation), completeness audit, universe_eligibility, then Gate 0.5 pilot per `phases/GATE05_PILOT_PRECOMMIT.md`.
+**Scott sign-off:** approved 2026-07-24 (in-session, three decisions answered explicitly)
+
 ## 2026-07-12 — h007–h010 restructured to the standard sealed-hypothesis template
 **Event type:** DECISION
 **Auditor or trigger:** Scott request, after h011 arrived as a fully-structured document
