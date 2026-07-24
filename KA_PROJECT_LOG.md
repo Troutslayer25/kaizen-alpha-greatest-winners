@@ -15,6 +15,33 @@ Entry format:
 
 ---
 
+## 2026-07-24 (evening) — Gate 0.5 pilot universe SELECTED and committed (pre-compute)
+**Event type:** DECISION (pre-committed artifact)
+**Auditor or trigger:** Scott ("Go for it") — pilot selection per `GATE05_PILOT_PRECOMMIT.md`
+**Work:** `gws/phase0/select_gate05_pilot.py` + `phases/gate05_pilot_universe.csv` (250 stratified,
+seed 20260719, + 50 adversarial), committed BEFORE any pilot compute, per the pre-commit. Selection
+verified bit-deterministic (identical SHA-256 across two runs). Ever-eligible population: 18,701.
+All adversarial minimums met with multi-tagging: bankruptcy 14, reverse_split 16, symbol_reuse 22,
+pre1980 15, qc_flagged 8.
+**Documented deviations from the pre-commit text (structural, none outcome-based):**
+- **D1** — family stratum gained a `none` class: the all-listed-equity deep-era rule (ratified
+  2026-07-24, POST-dating the 2026-07-19 pre-commit) creates pre-1990 first-eligibility dates with
+  no index membership; the original three families cannot classify them. Post-1990 first
+  eligibility requires membership, so `none` is exclusively a deep-era class.
+- **D2** — bankruptcy/liquidation proxy: delisted AND (base symbol ends 'Q' — NASDAQ fifth-letter
+  convention — OR name contains liquidation/bankruptcy marker). No direct delist-reason field
+  exists in ka_history.
+- **D3** — reverse-split class from adj_factor structure (forward-in-time factor drop >= 1.5x):
+  `corporate_actions` holds ZERO split rows (dividends only — known limitation). adj_factor is
+  split metadata, explicitly allowed by the pre-commit's structural-criteria list.
+**Structural-only discipline held:** selection queries touched eligibility flags/dates, entity
+metadata, membership intervals, adj_factor structure, QC flags — no prices, returns,
+volumes-as-signal, or move outcomes.
+**Resolution:** Pilot universe locked. Next: pilot scope steps 1–8 (detector → transfer experiment
+→ runtime projection), then the Scott-signed exit memo.
+**Scott sign-off:** selection procedure is the pre-committed one; deviations D1–D3 flagged here for
+review at the Gate 0.5 memo.
+
 ## 2026-07-24 (later) — Phase-0 execution: lockbox ratified, crosswalk, audits, universe build
 **Event type:** DECISION + Phase-0 execution
 **Auditor or trigger:** Continuation of the same session (Scott: "Word")
