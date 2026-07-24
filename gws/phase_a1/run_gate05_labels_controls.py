@@ -59,6 +59,8 @@ def main() -> int:
             moves = by_scale.get(PRIMARY_TRAIL, [])
             if not dates:
                 continue
+            from gws.phase_a1.series_guard import assert_series_hash  # M3 composition guard
+            assert_series_hash(conn, RUN_ID, eid, dates)
             df = build_setup_labels({eid: moves}, n_days=len(dates), forward_window_k=K)
             cur.execute("DELETE FROM gws.setup_labels WHERE ticker_id=%s AND forward_window_k=%s",
                         (eid, K))

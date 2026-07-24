@@ -45,6 +45,18 @@ CREATE INDEX IF NOT EXISTS ix_entity_ticker_map_ticker ON gws.entity_ticker_map 
 -- Watchlist symbols the ingester could NOT resolve to a ka_history entity — persisted,
 -- never printed-and-forgotten (review 2026-07-03 CF-1). A non-trivial count here HALTs
 -- the ingest: a silently short universe is the failure mode we are guarding against.
+-- Per-ticker cleaned-series fingerprint (Gate 0→A1 review, integration M3). Detection
+-- writes it; every later stage that rebuilds as_of_index<->date by re-running the loader
+-- MUST assert equality and refuse to compose on mismatch — date-vector drift otherwise
+-- silently NULLs setup_labels.linked_move_id and shrinks transfer samples.
+CREATE TABLE IF NOT EXISTS gws.detection_series_hash (
+  run_id     TEXT   NOT NULL,
+  ticker_id  BIGINT NOT NULL,
+  n_bars     INTEGER NOT NULL,
+  dates_sha  TEXT   NOT NULL,
+  PRIMARY KEY (run_id, ticker_id)
+);
+
 CREATE TABLE IF NOT EXISTS gws.index_membership_unmapped (
   norgate_symbol TEXT NOT NULL,
   index_name     TEXT NOT NULL,

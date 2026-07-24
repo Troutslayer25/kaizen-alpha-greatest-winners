@@ -95,6 +95,7 @@ def main() -> int:
     bench = bench_map()
 
     print("loading cleaned series for 300 names ...", flush=True)
+    from gws.phase_a1.series_guard import assert_series_hash  # M3 composition guard
     series, date_idx, bench_by_ticker = {}, {}, {}
     for r in pilot:
         eid = int(r["entity_id"])
@@ -102,6 +103,7 @@ def main() -> int:
             conn, eid, source="norgate", scales=SCALES)
         if not dates:
             continue
+        assert_series_hash(conn, RUN_ID, eid, dates)
         series[eid] = {"close": close, "high": high, "low": low, "volume": volume}
         date_idx[eid] = {d: i for i, d in enumerate(dates)}
         bench_by_ticker[eid] = np.array([bench.get(d, np.nan) for d in dates])
@@ -151,6 +153,12 @@ def main() -> int:
     # ---- step 6: negative controls + PIT note ------------------------------------------
     pts, fm = frames["minimal"], fms["minimal"]
     strat = pts["ticker_id"].map(lambda e: kind.get(int(e))) == "stratified"
+    # M2 guard (review): on a universe file without kind tags this mask is all-False and
+    # steps 6-7 would silently run on ZERO rows — hard-fail instead.
+    if not strat.any():
+        raise RuntimeError("stratified mask selected 0 rows — universe source has no 'kind' "
+                           "tags or none are 'stratified'; refusing to run steps 6-7 on an "
+                           "empty subset (review M2)")
     Xnc = fm.loc[strat].to_numpy(float)
     ync = pts.loc[strat, "label"].to_numpy()
     tnc = pts.loc[strat, "date"].to_numpy()

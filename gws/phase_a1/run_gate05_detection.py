@@ -47,10 +47,10 @@ def bench_map() -> dict:
     return {ts.date(): float(c) for ts, c in df["Close"].items()}
 
 
-def catalog_fingerprint(conn) -> tuple[int, str]:
+def catalog_fingerprint(conn, run_id: str = RUN_ID) -> tuple[int, str]:
     rows = conn.execute(
         "SELECT id_domain, ticker_id, start_date, scale, detection_system, direction "
-        "FROM gws.moves WHERE run_id=%s ORDER BY 1,2,3,4,5,6", (RUN_ID,)).fetchall()
+        "FROM gws.moves WHERE run_id=%s ORDER BY 1,2,3,4,5,6", (run_id,)).fetchall()
     h = hashlib.sha256()
     for r in rows:
         h.update(repr(sorted(r.items())).encode())
@@ -58,11 +58,28 @@ def catalog_fingerprint(conn) -> tuple[int, str]:
 
 
 def main() -> int:
+    import argparse
     import psycopg
     from psycopg.rows import dict_row
     from ka_lib import config as cfg
 
+    from gws.phase_a1.reset_derived import children_row_count
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--run-id", default=RUN_ID)
+    args = ap.parse_args()
+    run_id = args.run_id
+
     conn = psycopg.connect(cfg.load().local_db_url, row_factory=dict_row, autocommit=True)
+    # C1 guard (Gate 0→A1 review): with FK children present, per-ticker DELETEs raise and get
+    # swallowed → silently stale catalog with a PASSING fingerprint. Refuse to start instead.
+    n_children = children_row_count(conn)
+    if n_children:
+        print(f"REFUSING TO RUN: {n_children} rows exist in gws.moves FK children "
+              f"(matched_controls/setup_labels/entry_candidates). Run "
+              f"`python -m gws.phase_a1.reset_derived` first — children are derived artifacts "
+              f"and are rebuilt after detection.", file=sys.stderr)
+        return 1
     pilot = load_pilot()
     bench = bench_map()
     print(f"pilot names: {len(pilot)}; benchmark {BENCH_SYMBOL} bars: {len(bench)}", flush=True)
@@ -71,24 +88,29 @@ def main() -> int:
                      "primary_scale": PRIMARY_SCALE, "bench": BENCH_SYMBOL,
                      "hl_adjusted": True, "lockbox_capped": True}
     n_moves = n_zero = n_err = 0
-    per_kind = {"stratified": 0, "adversarial": 0}
+    per_kind: dict = {}
     errors = []
+    hash_rows = []
     for i, row in enumerate(pilot, 1):
         eid = int(row["entity_id"])
         try:
             dates, close, high, low, volume, by_scale = detect_moves_for_ticker(
                 conn, eid, source="norgate", scales=SCALES, atr_period=ATR_PERIOD)
+            if dates:
+                sha = hashlib.sha256("|".join(str(d) for d in dates).encode()).hexdigest()[:32]
+                hash_rows.append((run_id, eid, len(dates), sha))
             moves = [m for ms in by_scale.values() for m in ms]
             if not dates or not moves:
-                persist_moves(conn, eid, [], dates, close, run_id=RUN_ID)   # clears stale rows
+                persist_moves(conn, eid, [], dates, close, run_id=run_id)   # clears stale rows
                 n_zero += 1
                 continue
             b = np.array([bench.get(d, np.nan) for d in dates])
             n = persist_moves(conn, eid, moves, dates, close, high, low, volume,
                               bench_close=b, primary_scale=PRIMARY_SCALE,
-                              detect_params=detect_params, run_id=RUN_ID)
+                              detect_params=detect_params, run_id=run_id)
             n_moves += n
-            per_kind[row["kind"]] += n
+            k = row.get("kind", "untagged")
+            per_kind[k] = per_kind.get(k, 0) + n
         except Exception as e:  # noqa: BLE001 — per-ticker isolation; the run must finish
             n_err += 1
             errors.append((row["norgate_symbol"], str(e)[:120]))
@@ -96,12 +118,21 @@ def main() -> int:
             print(f"  {i}/{len(pilot)}: {n_moves} moves, {n_zero} zero-move, {n_err} errors",
                   flush=True)
 
-    print(f"\nmoves persisted: {n_moves} (stratified {per_kind['stratified']}, "
-          f"adversarial {per_kind['adversarial']}); zero-move names: {n_zero}; errors: {n_err}")
+    with conn.cursor() as cur:      # M3 guard: later stages assert against these hashes
+        cur.execute("DELETE FROM gws.detection_series_hash WHERE run_id=%s", (run_id,))
+        cur.executemany("INSERT INTO gws.detection_series_hash (run_id, ticker_id, n_bars, "
+                        "dates_sha) VALUES (%s,%s,%s,%s)", hash_rows)
+
+    print(f"\nmoves persisted: {n_moves} {per_kind}; zero-move names: {n_zero}; "
+          f"errors: {n_err}")
     for sym, msg in errors:
         print(f"  ERROR {sym}: {msg}")
-    cnt, fp = catalog_fingerprint(conn)
+    cnt, fp = catalog_fingerprint(conn, run_id)
     print(f"catalog fingerprint: rows={cnt} sha={fp}")
+    if n_err:
+        print("ERRORS PRESENT — the catalog is NOT trustworthy for downstream stages "
+              "(review C1): resolve every error and re-run before composing.",
+              file=sys.stderr)
     return 1 if n_err else 0
 
 

@@ -88,8 +88,19 @@ directional evidence, not significance claims.
 
 ---
 
-**Scott's determination: CELL A — with the three mandates in the recommendation**
-(anchor experiment first in A1; F1 carried as open; F4 ratifications recorded).
-Determined verbally in-session 2026-07-24 (recorded by the implementation agent per the
-session transcript; log entry same date). Wet/typed signature to be added by Scott on next
-repo touch — until then this line is the record of the determination.
+**Scott's determination (SUPERSEDED — see amendment):** CELL A with mandates, determined
+verbally in-session 2026-07-24.
+
+**AMENDMENT 2026-07-24 (same day, after the Gate 0→A1 four-auditor review — 2 HALT / 3
+CLEAR-WITH-CONDITIONS, `phases/gate0_a1_review/`): Scott approved all four synthesis items,
+amending the determination to "A-PROVISIONAL / B-LIVE."** The universal-discovery reading is
+held in abeyance and regime-conditional discovery is a live co-primary until the T2 settling
+package clears: (a) §12.1 transfer + negative controls re-run on the forward `setup_labels`
+frame with the within-ticker shift control required to fall inside the shuffle-null band,
+and (b) the frozen `PHASE_A3_TRANSFER_PRECOMMIT` instrument (transfer ratio, ≥3 ordered era
+pairs, emotional>structural majority) run with anchor variables removed from the structural
+arm. If the shift control does not collapse on the forward frame, the premise question
+reopens (Cell C review). The negative-control `passes=false` verdict is carried as an OPEN
+flag, not a passed checklist item. T3 engineering blockers (FK teardown-before-redetect,
+date-vector guard, parameterization) must land before any further gws compute.
+Determined verbally in-session 2026-07-24; typed signature on next repo touch.

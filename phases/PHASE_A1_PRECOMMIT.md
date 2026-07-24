@@ -34,3 +34,55 @@ document freezes how the three such statistics are computed; the [FORWARD] write
 Before Gate 0.5, the significance writer runs the PIT-invariance assertion
 (`tests/test_significance.py::test_expanding_pctile_is_invariant_to_future_moves` generalized to the
 real move frame): early-block percentiles must be byte-identical with vs without later data present.
+
+---
+
+## ADDENDUM — 2026-07-24, post Gate 0→A1 four-auditor review (Scott approved all four synthesis items; `phases/gate0_a1_review/`)
+
+**Operative gate state:** Gate 0.5 cell amended to **A-provisional / B-live**. The
+universal-discovery reading is held in abeyance until the T2 settling package clears.
+
+**Pins (outcome-independent rationales, fixed before any settling result exists):**
+- **Primary scale = `trail_6`** — the middle of the pre-committed scale triplet (2/6/15);
+  rationale is positional, not performance-based. The anchor experiment MUST report
+  scale-invariance of its conclusions across trail_2/6/15 as a robustness label.
+- **Headline analytical frame = the forward `setup_labels` (deployment) frame.** The
+  trough-anchored case-control frame remains a diagnostic view only; no headline claim may
+  rest on it (review T1/F-B: it is maximally exposed to the anchor).
+
+**Settling package (T2 — runs FIRST in A1; bars pre-committed):**
+- **B-anchor-1 (de-leak):** on the forward frame, the within-ticker label-shift control
+  (k=5) must fall INSIDE the shuffle-null band while the real score stays materially above
+  it. Fail → premise-level review (Cell C), per ka-premise.
+- **B-anchor-2 (differential):** the frozen `PHASE_A3_TRANSFER_PRECOMMIT` instrument
+  (`gws/regime/transfer_test.py`: symmetric era-relative normalization, transfer ratio,
+  ≥3 ordered era pairs, `invariance_supported` majority rule), on the forward frame, with
+  the anchor variables (location family: dist_from_high/dist_from_low/range_position)
+  REMOVED from the structural arm. Not supported → operative cell is B.
+- Era bins (pre-committed here): pre-1990 / 1990-1999 / 2000-2009 / 2010-2021 → 12 ordered
+  pairs.
+- **B-anchor-3 (point-of-strength)** follows as the anchor experiment's second half:
+  breakout/consolidation-exit-anchored labels vs trough-anchored, scored on forward MFE/MAE
+  with lead time at a point of strength (Method 8 machinery) — spec'd in its own pre-commit
+  before it runs.
+
+**Statistical hygiene (binding for all A1 claims):** two-way ticker×date clustered SEs (or
+date-block bootstrap) for univariate claims; significance counts reported on
+stratified/clean-universe rows only; transfer agreement metrics computed at CONCEPT level
+(one representative per lookback ladder) with a permutation reference; the negative-control
+`passes=false` from Gate 0.5 is carried as an OPEN flag until B-anchor-1 rules on it.
+
+**Clustering protocol (full universe):** n-scaled `min_cluster_size = max(50, 0.005·n)`;
+m-out-of-n stability (`subsample_frac`, fixed m ≈ 50k, many replicates) reporting the
+DISTRIBUTION of ARI and cluster count; tie-break computed on a common coverage subset (or
+noise assigned to nearest cluster); noise share > 20% forces the continuous representation;
+the pilot taxonomy is treated as CONTINUOUS.
+
+**Engineering gates before any full-universe run (review T3; correctness items landed
+2026-07-24 — reset_derived + children guard, detection_series_hash composition guard,
+strat-empty hard-fail, --run-id):** parallelize the per-ticker passes (detect-once/reuse,
+loading persisted cleaned series instead of re-detecting); process fan-out +
+`subsample_frac` for the clustering bootstrap; temp-table `UPDATE … FROM` for significance;
+`move_clusters` PK → (cluster_id, input_dimensions); close or document the delisted
+FMP-crosswalk gap (PIT F1); confirm detection scope (ever-eligible vs all-equity) before
+locking the runtime budget.
