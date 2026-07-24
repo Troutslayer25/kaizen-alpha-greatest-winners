@@ -54,3 +54,20 @@ def test_non_member_is_ineligible_even_if_clean():
     rows = build_eligibility(d, np.full(n, 50.0), np.full(n, 1e6), [])   # never a member
     assert not any(r["eligible"] for r in rows)
     assert rows[299]["data_valid"] and rows[299]["above_min_price"]      # clean, just not a member
+
+
+def test_deep_era_all_listed_rule():
+    # Ratified 2026-07-24: before INDEX_GATE_START (1990-07-03) the index gate is not applied —
+    # a clean, seasoned, never-a-member name IS eligible (all-listed-equity); on/after the
+    # boundary the same name is not. Membership stays recorded where intervals cover a date.
+    n = 600
+    base = dt.date(1989, 1, 2)
+    d = [base + dt.timedelta(days=i) for i in range(n)]        # spans the 1990-07-03 boundary
+    rows = build_eligibility(d, np.full(n, 50.0), np.full(n, 1e6), [])   # no membership data
+    boundary = dt.date(1990, 7, 3)
+    pre = [r for r in rows[251:] if r["date"] < boundary]
+    post = [r for r in rows[251:] if r["date"] >= boundary]
+    assert pre and post                                        # test actually spans the boundary
+    assert all(r["eligible"] for r in pre)
+    assert not any(r["eligible"] for r in post)
+    assert not any(r["index_member"] for r in rows)            # nothing invented

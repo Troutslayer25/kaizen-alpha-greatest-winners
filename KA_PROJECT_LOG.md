@@ -15,6 +15,39 @@ Entry format:
 
 ---
 
+## 2026-07-24 (later) — Phase-0 execution: lockbox ratified, crosswalk, audits, universe build
+**Event type:** DECISION + Phase-0 execution
+**Auditor or trigger:** Continuation of the same session (Scott: "Word")
+**Findings / work:**
+- **LOCKBOX RATIFIED: `LOCKBOX_START = 2022-01-01`, frozen** (Scott, in-session; tail-era form
+  over hash-sealed random era). `phases/LOCKBOX_PRECOMMIT.md` status updated.
+- **`INDEX_GATE_START = 1990-07-03`** encoded in `gws/phase0/universe.py` (implementation of the
+  all-listed-equity deep-era decision): the index gate applies only from the Russell series start —
+  the first date the index UNION is broad-market. Judgment call within the ratified rule: gating
+  1957–1990 on sp500 alone (the only membership that deep) would shrink the deep universe to ~500
+  names and defeat the rule's purpose. New unit test covers the boundary.
+- **assert_adjustment_fresh DEGRADED MODE:** live `eod_history` has NO `adjusted_at` column, so the
+  FRESHNESS leg is uncheckable (honest gap — stale-adjustment corruption undetectable until the
+  column is added and stamped by the backfill). Coverage leg ran: exactly **17 offender entities**
+  (the known unfetchable set: CIF, MCR, SGMO, SNBR, LC, SKLZ, CWAN, SATS, ORIS, QLEP.U, LOKV,
+  LOKVU, DEVS, CNTA, OPITQ + 2 delisted), tagged whole-entity `excluded`.
+- **`gws.entity_ticker_map` built** (new `build_entity_ticker_map.py`): 6,219 / 7,544 active
+  equities mapped by normalized symbol; 1,325 Norgate-only actives unmapped by design (no FMP
+  presence — still in universe via ka_history, just not FMP-cross-validated).
+- **Completeness audit ran** (FMP↔Norgate return-space, tol 2%): 32,255 discrepancy spans over
+  2,539 of 6,219 names, median span 1 day; 309 names (reverse-split microcaps: LFMD, XXII, WHLR,
+  SUNE…) carry 77% of spans — FMP-side adjustment noise, per the pre-committed prefer-Norgate
+  policy. FMP-domain spans excluded; Norgate spine untouched.
+- **`gws.universe_eligibility` full rebuild launched** (new `build_universe_eligibility.py`,
+  process-parallel ×16, per-entity COPY; driver defers ALL semantics to the tested
+  `build_eligibility` core). Smoke run 400 entities = 2.2M rows validated first. Bug found en
+  route: chunk-wide COPY deadlocked against same-connection fetches — restructured fetch-then-COPY.
+**Resolution:** Phase-0 data layer materially complete pending the eligibility build finishing +
+verification. Remaining before pilot selection: eligibility sanity checks, pilot selection script
+per `GATE05_PILOT_PRECOMMIT.md`.
+**Scott sign-off:** lockbox ratification explicit in-session 2026-07-24; rest is implementation
+under the morning's ratified decisions.
+
 ## 2026-07-24 — Phase 0 real-data work opened on KA-Workstation; Step-0 GO
 **Event type:** DECISION + GATE PASSED (Step-0)
 **Auditor or trigger:** Scott ("start the study"), on KA-Workstation local DB (post-G8), NDU installed, norgatedata 1.0.77

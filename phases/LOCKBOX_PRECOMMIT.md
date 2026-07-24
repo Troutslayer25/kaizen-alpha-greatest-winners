@@ -24,6 +24,7 @@ freedom FDR cannot reach. It was prose-only (no date, no code); this file sets t
   truncates to the pre-lockbox span.
 
 ## Status
-Boundary date **PENDING SCOTT'S RATIFICATION**. The mechanism is live; wiring `unlock`/`drop_lockbox`
+**RATIFIED by Scott 2026-07-24 (in-session): `LOCKBOX_START = 2022-01-01`, frozen.** The tail-era
+form was chosen over the hash-sealed random era. The mechanism is live; wiring `unlock`/`drop_lockbox`
 into the (forthcoming) production orchestrator's Phase-0 and detection entry points is required
 before the first full run.

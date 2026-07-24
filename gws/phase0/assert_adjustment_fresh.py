@@ -40,26 +40,46 @@ def connect():
                            options=f"-c search_path={SCHEMA},public")
 
 
+def _has_adjusted_at(conn) -> bool:
+    return conn.execute(
+        "SELECT 1 FROM information_schema.columns WHERE table_schema='ka_history' "
+        "AND table_name='eod_history' AND column_name='adjusted_at'").fetchone() is not None
+
+
 def find_offenders(conn, study_start=None):
     """Per-entity coverage + freshness check. Returns a list of dict rows, one per
-    failing entity, each with entity_id, uncovered, raw_at, adj_at, reason."""
+    failing entity, each with entity_id, uncovered, raw_at, adj_at, reason.
+
+    DEGRADED MODE (found 2026-07-24): live eod_history has no adjusted_at column — the
+    backfill never stamped per-row adjustment time — so the FRESHNESS leg (adjusted_at >=
+    ingested_at) is uncheckable and only COVERAGE runs. Loudly announced, not silent: a raw
+    re-pull after adjustment restates close but leaves adj_factor populated-and-wrong, which
+    coverage cannot see. Freshness becomes checkable when adjusted_at is added and stamped
+    by backfill_norgate_adjusted."""
+    has_fresh = _has_adjusted_at(conn)
+    if not has_fresh:
+        print("WARNING: eod_history.adjusted_at absent — FRESHNESS leg SKIPPED, "
+              "coverage-only. Stale-adjustment corruption is NOT detectable until the "
+              "column exists.", file=sys.stderr)
     where = "e.subtype1='Equity'"
     params: list = []
     if study_start:
         where += " AND h.date >= %s"
         params.append(study_start)
+    adj_at_expr = "max(h.adjusted_at)" if has_fresh else "NULL::timestamptz"
+    fresh_having = ("OR max(h.adjusted_at) IS NULL OR max(h.adjusted_at) < max(h.ingested_at)"
+                    if has_fresh else "")
     q = f"""
         SELECT h.entity_id,
                count(*) FILTER (WHERE h.close IS NOT NULL AND h.adj_factor IS NULL) AS uncovered,
                max(h.ingested_at) AS raw_at,
-               max(h.adjusted_at) AS adj_at
+               {adj_at_expr} AS adj_at
         FROM eod_history h
         JOIN entities e ON e.entity_id = h.entity_id
         WHERE {where}
         GROUP BY h.entity_id
         HAVING count(*) FILTER (WHERE h.close IS NOT NULL AND h.adj_factor IS NULL) > 0
-            OR max(h.adjusted_at) IS NULL
-            OR max(h.adjusted_at) < max(h.ingested_at)
+            {fresh_having}
     """
     offenders = []
     for r in conn.execute(q, params).fetchall():
