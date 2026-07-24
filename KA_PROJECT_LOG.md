@@ -15,6 +15,39 @@ Entry format:
 
 ---
 
+## 2026-07-24 (night) — T2 SETTLING RESULT: B-anchor-1 FAIL, B-anchor-2 NOT SUPPORTED → Cell C review convenes
+**Event type:** HALT (pre-committed bar fired)
+**Auditor or trigger:** `run_a1_anchor_settling.py` on the forward `setup_labels` frame
+(162,881 stratified points, 20.8% positive; eras pre1990/1990s/2000s/2010s =
+60,597/36,114/33,873/32,297). Evidence: `phases/gate05_evidence/anchor_settling.json`.
+**B-anchor-1 (de-leak): FAIL.** real AUC 0.753; shuffle band (0.495, 0.503); within-ticker
+shift control **0.898 — ABOVE the real score**. Formal pre-committed reading: the shift
+control did not collapse → premise-level review (Cell C) before any further compute.
+**B-anchor-2 (differential): NOT SUPPORTED — decisively.** Frozen A3 instrument, 12 ordered
+era pairs, location family REMOVED from the structural arm (5 features remain: price_to_ma
+ladder + ma_compression): emotional wins **0/12**; median transfer ratio emotional 0.844 vs
+structural 0.967. On the de-confounded instrument the current evidence runs OPPOSITE to the
+emotional-invariance thesis: the price-structure family is MORE era-stable than the
+behavioral family.
+**Post-hoc observation, flagged as a HYPOTHESIS for the Cell C review (NOT an override —
+the analyst does not get to explain away a failed pre-committed bar):** shifted (0.898) >
+real (0.753) is diagnostic. With points sampled every 5 bars and K=20 forward windows,
+(a) adjacent samples share 75% of their label window (labels are intrinsically
+autocorrelated), and (b) a k=5 within-ticker shift in SAMPLE space moves labels ~25 BARS
+back — the "shifted" task becomes RETRODICTION of a recent trough (price just bounced off a
+low), which features detect trivially. The control as pre-committed may be structurally
+incapable of collapsing on any overlapping-window forward frame, regardless of whether real
+signal exists. The review must rule whether B-anchor-1 needs a redesigned control (shift
+k >> window overlap; era-blocked label permutation preserving run-lengths) or whether the
+FAIL stands as premise-level evidence. Also for the review: real forward AUC 0.753 (vs
+0.914 on the trough frame) with cross_sectional_edge=true — there IS forward-frame signal
+above chance; what's unresolved is how much survives de-anchoring.
+**Resolution:** Per the pre-committed reading and the amended memo: **Cell C premise-level
+review convenes (ka-premise + auditors); NO further gws compute until it rules and Scott
+signs.** B-anchor-3 (point-of-strength anchoring) is the natural first exhibit for that
+review — it tests the premise at the anchor Scott actually trades.
+**Scott sign-off:** PENDING (review not yet convened).
+
 ## 2026-07-24 — Gate 0→A1 four-auditor review: 2 HALT / 3 CWC — gate NOT cleared this pass
 **Event type:** ESCALATION (review verdicts; Scott rules next)
 **Auditor or trigger:** Five-agent panel fired on Scott's "Fire it up" (ka-premise,
