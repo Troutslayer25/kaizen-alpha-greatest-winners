@@ -15,6 +15,32 @@ Entry format:
 
 ---
 
+## 2026-07-24 (night) — W1 FAIL / W2′ REWIND FIRES YES: a modest pre-move signature is real at T-21/T-63
+**Event type:** Pre-committed results (amended package, spec 65e5582, runner 30f80d2)
+**Scott's intent correction logged first:** trough-prediction was never the study's
+question; W2 withdrawn; W2′ rewind (cases vs matched controls, features BEFORE the move's
+start) replaces it; B-anchor-3 promoted to load-bearing tradeability gate.
+**W1 (re-scoped de-leak): FAIL** — location-residualized set still shows shifted 0.892 vs
+real 0.733 vs shuffle (0.495–0.504). The non-location families (price_to_ma, rel_strength,
+ret_std, …) also carry the trough echo. Per pre-commit: the forward setup_labels frame's
+edge is irreducibly anchor-driven; that frame is DEAD as a premise instrument (consistent
+with Scott's intent correction — it was testing the wrong question anyway).
+**W2′ (rewind, 9,317 cases vs 7,577 minimal controls): pre-committed bar fires YES.**
+AUC (residualized set): T-0 0.905 (contaminated reference) → T-5 0.739 → **T-21 0.587**
+(> 0.512+0.05 bar) → T-63 0.573. 35/80 features significant at T-21, 31/80 at T-63.
+**A modest but statistically real pre-move signature exists a month and a quarter before
+moves begin.** Caveat honest: T-5 is partly the decline-into-trough; T-21/T-63 are the
+clean claims. Top stable discriminators at T-21/T-63 (same set both offsets): rs_at_high_*
+NEGATIVE d (future movers' RS was NOT at highs — depressed-RS names, consistent with
+move-from-trough mechanics), ret_std_126 POSITIVE (higher trailing volatility),
+accum_vol_share_126 negative, perm_entropy_63 negative (more ordered price paths).
+Effect sizes are small (|d| 0.12–0.20) — a real cohort tilt, not a trading signal per se.
+**Resolution:** discovery premise ("moves are visible being born") = ALIVE at modest
+strength on the rewind frame. Tradeability question now rides ENTIRELY on B-anchor-3
+(point-of-strength) — pre-commit to be drafted for Scott's signature; no further compute
+until signed.
+**Scott sign-off:** results recorded; B-anchor-3 pre-commit pending his signature.
+
 ## 2026-07-24 (late) — CELL C REVIEW RULED: control vindicated, agent hypothesis REFUTED, premise UNSETTLED; work package W1–W5 to Scott
 **Event type:** ESCALATION resolved to a decision package (Scott rules)
 **Auditor or trigger:** Cell C panel (ka-premise lead, ka-research-integrity, ka-quant) on
