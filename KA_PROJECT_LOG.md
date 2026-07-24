@@ -15,6 +15,34 @@ Entry format:
 
 ---
 
+## 2026-07-24 (night) — Pilot scope steps 1–2 run: detection + catalog, idempotency PROVEN
+**Event type:** Gate 0.5 pilot execution (steps 1–2 of 8) + BUG FIX (Risk #4 class)
+**Auditor or trigger:** Continuation; pilot compute began only after `292524d` locked the universe
+**Pre-compute bug found:** `detect_moves_for_ticker` paired RAW high/low with ADJUSTED close (both
+price tables store H/L unadjusted) — Wilder ATR and the trailing stop were split-ratio-wrong on
+every name with a split; exactly the phantom-move class Gate 0.5 exists to surface. Fixed by
+scaling each bar's H/L by its own adj factor (adjusted_close/raw_close); regression test with a
+1:10 reverse split added (`tests/test_detect_driver_adjustment.py`).
+**Lockbox wired at the detector entry** per LOCKBOX_PRECOMMIT: bars on/after 2022-01-01 are never
+loaded (SQL cap + assert_not_in_lockbox belt); `unlock=True` reserved for the terminal step.
+**Gaps logged, not fixed (pilot no-parameter-changes rule):**
+- PRIMARY SCALE never pinned by the A1 pre-commit — ran with recommended default `trail_6`
+  (middle scale), flagged for ratification in the exit memo.
+- Benchmark series absent from ka_history (no Norgate US-Indices ingest) — used NDU-runtime
+  `$SPX` (1928+), aligned per ticker; logged as the standing benchmark pending Scott's view.
+- Volume is NOT split-adjusted; volume-based descriptors are distorted for moves spanning a
+  split. Backlog for A2 feature review, does not affect detection (volume only gates tradeability).
+- None of the 17 whole-entity-excluded names landed in the pilot draw, so the zero-move
+  execution path ran only via code (unit-tested), not via a pilot name.
+**Run (`run_gate05_detection.py`, run_id=gate05_pilot):** all 300 names end-to-end, 0 errors;
+73,203 moves persisted (59,003 stratified / 14,200 adversarial), scales 2/6/15 x ATR-21.
+**Idempotency PROVEN:** two consecutive full runs produced identical catalog fingerprints
+(rows=73203, sha=c95b06316194fcb7) — checklist item satisfied at the detection stage.
+**Resolution:** Steps 1–2 green. Next: step 3 clustering + stability, steps 4–6 labeling /
+matched controls / features / negative+PIT harnesses, step 7 §12.1 transfer experiment, step 8
+runtime projection → exit memo cells.
+**Scott sign-off:** pending at the Gate 0.5 memo (pilot outputs are evidence, not findings).
+
 ## 2026-07-24 (evening) — Gate 0.5 pilot universe SELECTED and committed (pre-compute)
 **Event type:** DECISION (pre-committed artifact)
 **Auditor or trigger:** Scott ("Go for it") — pilot selection per `GATE05_PILOT_PRECOMMIT.md`

@@ -53,12 +53,18 @@ def detect_moves_clean(high, low, close, volume, dates, exception_spans=(), *,
 
 
 def detect_moves_for_ticker(conn, ticker_id, *, source: str = "fmp",
-                            scales=(2.0, 6.0, 15.0), atr_period: int = 21) -> tuple:
+                            scales=(2.0, 6.0, 15.0), atr_period: int = 21,
+                            max_date=None, unlock: bool = False) -> tuple:
     """Load a ticker's adjusted series + its (same-domain) exclusion spans and detect on the
     cleaned series. Returns (dates_c, close_c, high_c, low_c, volume_c, {trail_atr: [MoveMFE]}) —
     the cleaned arrays feed persistence so descriptors match what the detector saw. `source`
-    selects both the price table AND the exclusion ID domain (review C-1)."""
+    selects both the price table AND the exclusion ID domain (review C-1).
+
+    LOCKBOX (wired 2026-07-24 per LOCKBOX_PRECOMMIT): bars on/after LOCKBOX_START are never
+    loaded unless `unlock=True` — the sealed holdout cannot even reach the detector. `max_date`
+    (exclusive) additionally caps the window; the effective cap is the earlier of the two."""
     from gws.phase0.exclusions import excluded_ids, load_exception_spans  # lazy
+    from gws.phase0.lockbox import LOCKBOX_START, assert_not_in_lockbox  # lazy
     if source == "fmp":
         table, key, span_sources = "public.eod_prices", "ticker_id", ["fmp", "completeness_audit"]
     else:
@@ -67,14 +73,27 @@ def detect_moves_for_ticker(conn, ticker_id, *, source: str = "fmp",
     # whole-entity exclusion (stale-adjustment / unfetchable): emit zero moves (review C2)
     if ticker_id in excluded_ids(conn, sources=span_sources):
         return [], np.array([]), np.array([]), np.array([]), np.array([]), {k: [] for k in scales}
+    cap = max_date
+    if not unlock and (cap is None or cap > LOCKBOX_START):
+        cap = LOCKBOX_START
     rows = conn.execute(
-        f"SELECT date, high, low, adjusted_close AS close, volume FROM {table} "
-        f"WHERE {key}=%s AND adjusted_close IS NOT NULL ORDER BY date", (ticker_id,)).fetchall()
+        f"SELECT date, high, low, close AS raw_close, adjusted_close AS close, volume "
+        f"FROM {table} "
+        f"WHERE {key}=%s AND adjusted_close IS NOT NULL AND date < %s ORDER BY date",
+        (ticker_id, cap)).fetchall()
+    if not unlock:
+        assert_not_in_lockbox([r["date"] for r in rows])     # belt-and-suspenders
     dates = [r["date"] for r in rows]
     spans = load_exception_spans(conn, ticker_id, sources=span_sources)
-    high = np.array([r["high"] for r in rows], float)
-    low = np.array([r["low"] for r in rows], float)
     close = np.array([r["close"] for r in rows], float)
+    raw_close = np.array([r["raw_close"] for r in rows], float)
+    # High/low are stored RAW in both tables; pairing them with adjusted close poisons ATR and
+    # the trailing stop across every split (found 2026-07-24, pre-pilot). Scale each bar's H/L
+    # by that bar's own adjustment factor so intrabar geometry is preserved in adjusted space.
+    with np.errstate(divide="ignore", invalid="ignore"):
+        factor = np.where(np.isfinite(raw_close) & (raw_close > 0), close / raw_close, np.nan)
+    high = np.array([r["high"] for r in rows], float) * factor
+    low = np.array([r["low"] for r in rows], float) * factor
     volume = np.array([r["volume"] for r in rows], float)
     return detect_moves_clean(high, low, close, volume, dates, spans,
                               scales=scales, atr_period=atr_period)
