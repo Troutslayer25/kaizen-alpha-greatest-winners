@@ -17,7 +17,8 @@ from gws.phase_a1.move_detector_mfe import detect_moves_multiscale
 
 
 def detect_moves_clean(high, low, close, volume, dates, exception_spans=(), *,
-                       scales=(2.0, 6.0, 15.0), atr_period: int = 21, min_duration: int = 1):
+                       scales=(2.0, 6.0, 15.0), atr_period: int = 21, min_duration: int = 1,
+                       data_valid=None):
     """Clean the series, then run the multi-scale detector. Returns
     (dates_c, close_c, high_c, low_c, volume_c, {trail_atr: [MoveMFE]}) — the CLEANED arrays are
     returned so characterization runs on the same bars the detector saw (review M-4).
@@ -26,11 +27,19 @@ def detect_moves_clean(high, low, close, volume, dates, exception_spans=(), *,
     OR any of its OHLC is non-finite (a NaN high would otherwise poison the recursive Wilder ATR
     forever and the trailing stop would never fire). Untradeable bars are forward-filled to the
     last good value; LEADING untradeable bars (phantom-zero series starts — no prior good value)
-    are TRIMMED, because forward-fill cannot repair them and a close of ~0 seeds an infinite move."""
+    are TRIMMED, because forward-fill cannot repair them and a close of ~0 seeds an infinite move.
+
+    `data_valid` (Gate 0.5 Decision D, 2026-07-24): optional per-bar validity mask from the
+    caller — the driver passes the ratified $1 RAW-close data-validity floor (Phase-0 semantics,
+    penny-spread artifact guard). The pilot audit caught 46 phantom mega-moves (999x/9999x round
+    ratios, mae=0) seeded on sub-penny prints; detection never consumed the floor that eligibility
+    already enforced. Invalid bars are treated exactly like untradeable ones."""
     high = np.asarray(high, float); low = np.asarray(low, float)
     close = np.asarray(close, float); volume = np.asarray(volume, float)
     finite = np.isfinite(close) & np.isfinite(high) & np.isfinite(low)
     mask = tradeable_mask(dates, volume, exception_spans) & finite
+    if data_valid is not None:
+        mask &= np.asarray(data_valid, bool)
 
     c = forward_fill_excluded(close, mask)
     h = forward_fill_excluded(high, mask)
@@ -95,5 +104,9 @@ def detect_moves_for_ticker(conn, ticker_id, *, source: str = "fmp",
     high = np.array([r["high"] for r in rows], float) * factor
     low = np.array([r["low"] for r in rows], float) * factor
     volume = np.array([r["volume"] for r in rows], float)
+    # ratified $1 data-validity floor on the RAW traded price (universe.MIN_PRICE — adjusted
+    # close would deflate deep history below any floor and erase the pre-split eras)
+    from gws.phase0.universe import MIN_PRICE  # lazy — single source of the floor
+    data_valid = np.isfinite(raw_close) & (raw_close >= MIN_PRICE)
     return detect_moves_clean(high, low, close, volume, dates, spans,
-                              scales=scales, atr_period=atr_period)
+                              scales=scales, atr_period=atr_period, data_valid=data_valid)

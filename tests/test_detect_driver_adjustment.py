@@ -44,6 +44,30 @@ class _Conn:
         return _Cur(self.rows)
 
 
+class _PennyConn(_Conn):
+    """Sub-penny era then a real $2 stock: the pre-Decision-D detector seeded a ~20,000x
+    phantom move from the $0.0001 trough (pilot audit, 46 flagged rows)."""
+
+    def __init__(self):
+        n = 400
+        base = dt.date(2015, 1, 5)
+        raw = np.concatenate([np.full(100, 0.0001), np.full(300, 2.0) * 1.001 ** np.arange(300)])
+        self.rows = [{
+            "date": base + dt.timedelta(days=i),
+            "high": raw[i] * 1.01, "low": raw[i] * 0.99,
+            "raw_close": raw[i], "close": raw[i], "volume": 1e6,
+        } for i in range(n)]
+
+
+def test_sub_penny_bars_cannot_seed_phantom_moves():
+    dates, close, high, low, volume, by_scale = detect_moves_for_ticker(
+        _PennyConn(), 43, source="norgate")
+    assert len(dates) == 300                       # sub-$1 leading era trimmed, not detected on
+    for moves in by_scale.values():
+        for m in moves:
+            assert m.magnitude < 2.0, f"phantom penny move survived: {m.magnitude}x"
+
+
 def test_high_low_are_scaled_into_adjusted_space():
     dates, close, high, low, volume, by_scale = detect_moves_for_ticker(
         _Conn(), 42, source="norgate")

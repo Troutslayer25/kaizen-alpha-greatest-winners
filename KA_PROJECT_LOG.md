@@ -15,6 +15,36 @@ Entry format:
 
 ---
 
+## 2026-07-24 (night, cont.) — DECISION D FIRED + resolved; catalog QC green; step 3 done
+**Event type:** DECISION D (pre-committed cell: pipeline broken → fix → re-run) + GATE progress
+**Auditor or trigger:** Post-persist audit HALT: 46 phantom mega-moves (999x/9999x/14999x round
+ratios, mae=0.000, e.g. SARA "10,099x in 28 bars") — sub-penny prints seeding moves inside the
+quote spread. Root cause: the ratified $1 RAW-close data-validity floor gated ELIGIBILITY but was
+never consumed at DETECTION.
+**Remediation (no new parameter — enforcement of already-ratified Phase-0 semantics):**
+`detect_moves_clean` gained an optional `data_valid` mask; the driver passes
+`raw_close >= universe.MIN_PRICE` (single source of the floor). Sub-$1 bars are treated exactly
+like untradeable bars (forward-filled; leading runs trimmed). Regression test added (sub-penny
+era then $2 stock: phantom 20,000x must not exist). Full detection re-run per Decision D.
+**Post-fix state:** 68,593 moves (-4,610 artifacts); 2 fully-sub-$1 names now correctly
+zero-move; idempotency re-proven (fingerprint rows=68593 sha=113b19f960593f64 twice);
+**audits ALL ZERO** (phantom 0, open-violations 0, inconsistencies 0, cross-domain 0).
+**Significance assigned** (expanding, decision-date keyed; comparison set = same
+(system, scale, direction) peers — interpretation logged for the memo): trail_2 n=53,544
+p99=+97%; trail_6 n=11,803 p99=+306%; trail_15 n=3,246 p99=+1,117%.
+**Step 3 clustering (primary scale trail_6, resolved n=11,536):** z-scored
+[log1p(magnitude), log1p(duration), smoothness], HDBSCAN(mcs=15), seed 20260719:
+**27 clusters, 4,044 noise (35%), mean ARI 0.710 = MARGINAL; resolve_representation chose
+DISCRETE** (within-group-variance tie-break — the math decided, not the analyst).
+Persisted: gws.cluster_stability run row, gws.move_clusters (27 rows), per-move
+cluster_id/cluster_label. Memo note: 27 clusters at marginal ARI on pilot N suggests
+fragmentation; full-universe stability is a §12 question, not a pilot conclusion.
+**Resolution:** Steps 1–3 + audits green. Remaining: 4 (labeling+controls), 5 (frozen-net
+features + univariate), 6 (negative+PIT harnesses), 7 (§12.1 transfer), 8 (runtime projection),
+then the exit memo.
+**Scott sign-off:** Decision D is the pre-committed response to a failed checklist; flagged for
+review in the exit memo alongside primary-scale and benchmark ratifications.
+
 ## 2026-07-24 (night) — Pilot scope steps 1–2 run: detection + catalog, idempotency PROVEN
 **Event type:** Gate 0.5 pilot execution (steps 1–2 of 8) + BUG FIX (Risk #4 class)
 **Auditor or trigger:** Continuation; pilot compute began only after `292524d` locked the universe
