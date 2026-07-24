@@ -92,6 +92,25 @@ FROZEN_FAMILIES = {
 }
 GENERIC_FAMILY = "generic"
 
+# §12.1 transfer-experiment instrument (committed BEFORE any transfer metric ran — Gate 0.5).
+# Mapping derived from research/regime_conditional_discovery.md "Operationalization":
+#   emotional/behavioral (hypothesized regime-INVARIANT): volatility contraction/coiling,
+#   shakeout, volume surge vs dry-up (conviction/participation), path smoothness, RS
+#   persistence (herding/leadership)  ->  volatility, base_structure, volume, relative_strength
+#   structural (hypothesized regime-DEPENDENT): price levels, sector identity, durations
+#   ->  location, moving_average, group_strength
+# The generic/auto bank is NEITHER (it is the competition pool, not a thesis family).
+THESIS_CLASS = {
+    "volatility": "emotional", "base_structure": "emotional", "volume": "emotional",
+    "relative_strength": "emotional",
+    "location": "structural", "moving_average": "structural", "group_strength": "structural",
+}
+
+
+def thesis_class_of(feature_name: str) -> str | None:
+    fam = family_of(feature_name)
+    return THESIS_CLASS.get(fam) if fam else None
+
 
 def family_of(feature_name: str) -> str | None:
     """Frozen family for a feature (None if unmapped). Generic-bank features are one `generic` family."""
