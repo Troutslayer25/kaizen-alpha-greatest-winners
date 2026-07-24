@@ -88,4 +88,8 @@ directional evidence, not significance claims.
 
 ---
 
-**Scott's determination:** cell ____ .  Signature: ____________  Date: ________
+**Scott's determination: CELL A — with the three mandates in the recommendation**
+(anchor experiment first in A1; F1 carried as open; F4 ratifications recorded).
+Determined verbally in-session 2026-07-24 (recorded by the implementation agent per the
+session transcript; log entry same date). Wet/typed signature to be added by Scott on next
+repo touch — until then this line is the record of the determination.

@@ -15,6 +15,21 @@ Entry format:
 
 ---
 
+## 2026-07-24 — GATE 0.5 CLOSED: Scott signs CELL A (with mandates)
+**Event type:** GATE PASSED
+**Auditor or trigger:** Scott, in-session ("Go with a"), after F1/F2 and the A-vs-B tradeoff
+were laid out explicitly (memo + chat walkthrough of the cell matrix).
+**Determination:** **CELL A** — checklist green + transfer FOR → proceed toward Gate 0→A1
+review — **bound to the three mandates:** (1) the pre-committed trough-vs-breakout /
+point-of-strength ANCHOR EXPERIMENT is the FIRST Phase-A1 analysis; no finding is read as a
+setup signature before it; (2) F1 stands: the emotional-invariance thesis is OPEN (no
+differential observed at pilot scale), not confirmed; (3) F4 ratifications recorded with
+this signature: primary scale `trail_6`, NDU-runtime `$SPX` benchmark, selection deviations
+D1–D3, same-scale significance comparison sets.
+**Resolution:** Gate 0.5 CLOSED. Next gate: Gate 0→A1 four-auditor review (V11 framework)
+against the pilot artifacts + this memo; Phase A1 does not open until that review clears.
+**Scott sign-off:** CELL A, 2026-07-24 in-session; typed signature on next repo touch.
+
 ## 2026-07-24 (late night) — Pilot steps 4–8 complete; EXIT MEMO DRAFTED (awaits Scott)
 **Event type:** Gate 0.5 pilot execution complete (steps 4–8 of 8) + exit-memo draft
 **Auditor or trigger:** Continuation ("Go for it")
