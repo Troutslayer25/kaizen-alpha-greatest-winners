@@ -15,6 +15,33 @@ Entry format:
 
 ---
 
+## 2026-07-24 (late night) — Pilot steps 4–8 complete; EXIT MEMO DRAFTED (awaits Scott)
+**Event type:** Gate 0.5 pilot execution complete (steps 4–8 of 8) + exit-memo draft
+**Auditor or trigger:** Continuation ("Go for it")
+**Step 4:** setup_labels 201,446 pts (21.0% positive, K=20 house default, logged);
+matched controls minimal 11,466 + liquidity-quintile 8,108 (pilot-internal pool, logged);
+delisted share cases 79.6% vs controls 75.5–78.5% (no survivor tilt). 30% of trail_6
+troughs sit at non-eligible dates (burn-in / sub-$1 adjacency) — memo fact.
+**Pre-registration:** THESIS_CLASS emotional/structural mapping committed to
+feature_catalog (`d0b5b29`, derived from regime_conditional_discovery.md) BEFORE any
+transfer metric ran.
+**Steps 5–7 (92 frozen-net price/volume features, 23,002 points, ticker-clustered):**
+univariate 80/92 significant (minimal), 79/92 (liquidity robustness). Negative controls:
+shuffle-null clean (0.488–0.517), real AUC 0.914, permute-within-date 0.52–0.55,
+**within-ticker shift 0.832 → F2 trough-anchor contamination** (snowball #2 materialized —
+the harness did its job). §12.1 transfer (stratified only, both splits): sign agreement
+0.80–1.00, ρ 0.94–0.96, cross-era AUC 0.873–0.885 vs within-era 0.888–0.899 → formally
+FOR transfer in BOTH families; **the thesis differential is ABSENT (F1)** — structural
+transfers as well as emotional. One runner bug fixed en route (within-train baseline cut
+was frame-ordered → date-ordered; NaN on first run, no metric changed).
+**Step 8:** pilot ≈ 7 min/300 names → full-universe projection ~13 h serial, ~1–2 h
+parallel — far under the 7-day gate.
+**Exit memo DRAFTED** (`phases/GATE05_EXIT_MEMO.md`, unsigned): checklist table, two
+Decision-D events, transfer table, findings F1–F4, cell recommendation "A with mandates"
+(anchor experiment FIRST in A1) with B as the defensible alternative. **Scott signs the
+cell — nothing proceeds to Gate 0→A1 review until then.**
+**Scott sign-off:** PENDING — this memo is the gate.
+
 ## 2026-07-24 (night, cont.) — DECISION D FIRED + resolved; catalog QC green; step 3 done
 **Event type:** DECISION D (pre-committed cell: pipeline broken → fix → re-run) + GATE progress
 **Auditor or trigger:** Post-persist audit HALT: 46 phantom mega-moves (999x/9999x/14999x round
