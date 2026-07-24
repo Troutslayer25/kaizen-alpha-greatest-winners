@@ -15,6 +15,34 @@ Entry format:
 
 ---
 
+## 2026-07-24 — Gate 0→A1 four-auditor review: 2 HALT / 3 CWC — gate NOT cleared this pass
+**Event type:** ESCALATION (review verdicts; Scott rules next)
+**Auditor or trigger:** Five-agent panel fired on Scott's "Fire it up" (ka-premise,
+ka-research-integrity, ka-pit-auditor, ka-quant, ka-integration; ka-economic-mechanism
+benched until A3→A4). Verbatim reports: `phases/gate0_a1_review/REPORTS.md`; Auditor-4
+first-pass: `phases/gate0_a1_review/SYNTHESIS.md`.
+**Verdicts:** premise HALT; integration HALT (C1 FK silent-stale-catalog PROVEN LIVE + the
+1–2h runtime claim refuted, ~25–30h as-coded); integrity, quant, PIT all
+CLEAR-WITH-CONDITIONS. PIT is the clean pillar: data path verified PIT-clean and
+survivorship-free in code AND persisted data.
+**Convergent findings:** T1 Cell A overstated (coded passes=false; frozen
+PHASE_A3_TRANSFER_PRECOMMIT instrument — ratio, ≥3 era pairs, emotional>structural
+majority — was not the one run and points to B; headline evidence ran on the
+anchor-contaminated frame while setup_labels sat unused); T2 one settling package =
+forward-frame transfer + negative controls + frozen A3 instrument with anchor variables
+residualized (IS the mandated anchor experiment, ~1 day on existing data; premise's bar:
+shift control must collapse to ~chance or the premise question reopens); T3 engineering
+blockers before ANY A1 compute (FK teardown-before-redetect + n_err>0 refuses to pass;
+detect-once/reuse + date-vector hash; parallelize passes + bootstrap; parameterize
+RUN_ID/universe/kind); T5 stat hygiene for the A1 pre-commit (two-way clustering,
+concept-level transfer metrics, n-scaled cluster protocol, pilot taxonomy = continuous).
+**Auditor-4 recommendation (all items Scott's):** reopen the Gate 0.5 cell → amend to
+"A-provisional / B-live" pending T2; approve T3 fixes; approve T2 as the first A1 act;
+fold T5 + integrity's pins (trail_6, frame choice) into the A1 pre-commit.
+**Resolution:** OPEN — awaiting Scott's ruling on the four items. No gws compute runs
+until the T3 blockers are fixed and Scott rules.
+**Scott sign-off:** PENDING.
+
 ## 2026-07-24 — GATE 0.5 CLOSED: Scott signs CELL A (with mandates)
 **Event type:** GATE PASSED
 **Auditor or trigger:** Scott, in-session ("Go with a"), after F1/F2 and the A-vs-B tradeoff
