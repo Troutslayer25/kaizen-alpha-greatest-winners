@@ -215,6 +215,9 @@ def detect_all(d, o, h, lo, c, v, p, fams=frozenset("ABCDEF")):
                 ev.append((B, "E", None, lo[B]))
 
     FW, FT = p["f_win"], p["f_tol"]              # Family F
+    v2 = p.get("f_v2", False)                    # Scott's spec, addendum 2026-07-25
+    mid_tol = p.get("f_mid_tol", 0.015)
+    end_tol = p.get("f_end_tol", 0.006)
     swings = ([i for i in range(10, n - 5)
                if h[i] == h[max(0, i - 10):i + 11].max()] if "F" in fams else [])
     for si, a0 in (list(enumerate(swings)) if "F" in fams else ()):
@@ -225,7 +228,11 @@ def detect_all(d, o, h, lo, c, v, p, fams=frozenset("ABCDEF")):
             end = min(a0 + FW + 1, n)
             line = h[a0] + slope * (np.arange(a0, end) - a0)
             seg_h, seg_c = h[a0:end], c[a0:end]
-            near = (seg_h >= line * (1 - FT)) & (seg_c <= line)
+            if v2:
+                # touch = wick top MEETS the line (±mid_tol both sides), close not above
+                near = (np.abs(seg_h - line) <= line * mid_tol) & (seg_c <= line * 1.005)
+            else:
+                near = (seg_h >= line * (1 - FT)) & (seg_c <= line)
             tidx = np.where(near)[0]
             picked, last = [], -9
             for tt in tidx:
@@ -233,16 +240,25 @@ def detect_all(d, o, h, lo, c, v, p, fams=frozenset("ABCDEF")):
                     picked.append(tt); last = tt
             if len(picked) < p["f_touch"]:
                 continue
+            if v2:
+                # end anchors must TOUCH tight: first touch is a0 (exact by construction);
+                # the LAST touch is the line's second anchor
+                lt = picked[-1]
+                if abs(seg_h[lt] - line[lt]) > line[lt] * end_tol or picked[0] != 0:
+                    continue
+                if a0 + lt < a1:                 # line must end ON a touch at/after a1
+                    continue
             after = picked[-1] + 1
-            brk = np.where((seg_c[after:] > line[after:] * 1.01))[0]
+            brk = np.where((seg_c[after:] > line[after:] * (1.0 if v2 else 1.01)))[0]
             for bb in brk:
                 B = a0 + after + bb
                 # f_confirm (PIT hardening 2026-07-25): a swing high is only knowable
                 # ~10 bars after it prints; the entry may not precede a1's confirmation.
                 if B < a1 + p.get("f_confirm", 0):
                     continue
-                if c[B] > c[B - 1]:
-                    ev.append((B, "F", None, lo[B - 1]))
+                # v2 entry: DECISIVE break bar — close above line AND above prior high
+                if (c[B] > h[B - 1]) if v2 else (c[B] > c[B - 1]):
+                    ev.append((B, "F", "v2" if v2 else None, lo[B - 1]))
                     break
             break
     return ev
