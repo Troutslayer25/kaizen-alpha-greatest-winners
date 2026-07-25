@@ -101,7 +101,8 @@ def main() -> int:
     mc = mc.set_index("date").astype(float)
 
     def event_frame(run_id, families=None):
-        q = "SELECT ticker_id, event_date, family, variant_tag, outcome FROM " \
+        q = "SELECT ticker_id, event_date, family, variant_tag, outcome, entry_price, " \
+            "stop_price, native_stop FROM " \
             "gws.anchor_events WHERE run_id=%s AND outcome IN ('winner','failed')"
         args = [run_id]
         if families:
@@ -173,6 +174,59 @@ def main() -> int:
               f"deleak={'OK' if res['deleak_clean'] else 'FLAG'} sig={res['n_sig']} "
               f"era={ {k: round(v, 3) for k, v in res['era_auc'].items()} }", flush=True)
 
+    def relabel(ev, mode):
+        """Outcome under a robustness label (spec §2), rescanned from the cleaned series."""
+        Hh = 63 if mode == "h63" else 126
+        tgt_mult = 1.25 if mode == "t25" else 1.20
+        y2 = np.full(len(ev), -1)
+        for j, r in enumerate(ev.itertuples()):
+            c = series[r.ticker_id]["close"]
+            hh = series[r.ticker_id]["high"]
+            i0 = r.idx0
+            entry = float(r.entry_price)
+            if mode == "fix7":
+                fail_lv = entry * 0.93
+            elif mode == "native" and r.native_stop is not None:
+                fail_lv = float(r.native_stop)
+            else:
+                fail_lv = float(r.stop_price)
+            tgt = entry * tgt_mult
+            for tt in range(i0 + 1, min(i0 + Hh + 1, len(c))):
+                if hh[tt] >= tgt:
+                    y2[j] = 1
+                    break
+                if c[tt] < fail_lv:
+                    y2[j] = 0
+                    break
+        return y2
+
+    # ---- Family A: robustness LABELS + ATR-coupling diagnostic (spec §2/§4) -----------
+    evA = ev_all[ev_all["family"] == "A"].reset_index(drop=True)
+    evA = evA[evA["ticker_id"].isin(series)].reset_index(drop=True)
+    fmA = features_for(evA)
+    a_ref = out["per_family"]["A"]
+    bar_a = max(a_ref["shuffle"][1], a_ref["cyclic_roll"][1]) + 0.05
+    label_dirs = []
+    out["a_label_robustness"] = {}
+    for mode in ("t25", "fix7", "h63", "native"):
+        y2 = relabel(evA, mode)
+        m = y2 >= 0
+        if m.sum() < 200 or len(set(y2[m])) < 2:
+            continue
+        auc2 = auc_fit_score(fmA[m].to_numpy(float), y2[m],
+                             evA["event_date"].to_numpy()[m])
+        label_dirs.append(auc2 > bar_a)
+        out["a_label_robustness"][mode] = {"auc": auc2, "n": int(m.sum()),
+                                           "win_rate": float(y2[m].mean())}
+        print(f"  label[{mode}]: AUC={auc2:.3f} n={int(m.sum())} "
+              f"win%={100 * y2[m].mean():.1f}", flush=True)
+    vol_cols = [col for col in fmA.columns
+                if col.startswith(("atr_pct", "ret_std")) or col == "ctx_spx_ret_std_21"]
+    auc_novol = auc_fit_score(fmA.drop(columns=vol_cols).to_numpy(float),
+                              evA["y"].to_numpy(), evA["event_date"].to_numpy())
+    out["a_auc_excl_volatility"] = auc_novol
+    print(f"  diagnostic AUC (volatility families excluded): {auc_novol:.3f}", flush=True)
+
     print("robustness (Family A variants):", flush=True)
     prim_dir = out["per_family"]["A"]["auc"] > out["per_family"]["A"]["shuffle"][1] + 0.05
     agree = []
@@ -190,15 +244,18 @@ def main() -> int:
         print(f"  {key}={val}: AUC={r['auc']:.3f} n={r['n']}", flush=True)
 
     a = out["per_family"]["A"]
-    sep = a["auc"] > a["shuffle"][1] + 0.05
-    weak = a["shuffle"][1] < a["auc"] <= a["shuffle"][1] + 0.05
-    robust_ok = (sum(agree) > len(agree) / 2) if agree else False
+    null_hi = max(a["shuffle"][1], a["cyclic_roll"][1])
+    sep = a["auc"] > null_hi + 0.05
+    weak = null_hi < a["auc"] <= null_hi + 0.05
+    all_dirs = agree + label_dirs
+    robust_ok = (sum(all_dirs) > len(all_dirs) / 2) if all_dirs else False
     cell = ("P-D" if not a["deleak_clean"] else
             "P-A" if sep and robust_ok else
             "P-B" if weak or (sep and not robust_ok) else "P-C")
-    out["decision"] = {"cell": cell, "family_A_auc": a["auc"],
+    out["decision"] = {"cell": cell, "family_A_auc": a["auc"], "null_hi": null_hi,
                        "deleak_clean": a["deleak_clean"],
-                       "variants_agreeing": f"{sum(agree)}/{len(agree)}"}
+                       "param_variants_agreeing": f"{sum(agree)}/{len(agree)}",
+                       "label_variants_agreeing": f"{sum(label_dirs)}/{len(label_dirs)}"}
     print(f"\nDECISION MATRIX (Family A): cell {cell} — Scott signs the cell.", flush=True)
 
     with (EVID / "b_anchor3_results.json").open("w", encoding="utf-8") as f:
