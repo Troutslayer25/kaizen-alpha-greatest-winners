@@ -237,6 +237,10 @@ def detect_all(d, o, h, lo, c, v, p, fams=frozenset("ABCDEF")):
             brk = np.where((seg_c[after:] > line[after:] * 1.01))[0]
             for bb in brk:
                 B = a0 + after + bb
+                # f_confirm (PIT hardening 2026-07-25): a swing high is only knowable
+                # ~10 bars after it prints; the entry may not precede a1's confirmation.
+                if B < a1 + p.get("f_confirm", 0):
+                    continue
                 if c[B] > c[B - 1]:
                     ev.append((B, "F", None, lo[B - 1]))
                     break
