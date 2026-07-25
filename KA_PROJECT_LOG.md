@@ -15,6 +15,24 @@ Entry format:
 
 ---
 
+## 2026-07-25 — TRENDLINE PATH: F survives strict-PIT hardening; workbook recall 6/7 on tiny overlap
+**Event type:** Gate progress (Scott ruled rescope onto Family F)
+**F hardening (f_confirm=10, run be6483c/78ccbab):** entry forbidden before swing-high
+confirmation → 7,880 events (vs 7,913), win% 51.2 (vs 50.9), AUC 0.636 vs null-hi 0.575,
+de-leak clean, clears with margin. **The lookahead caveat is RETIRED — F's separation is
+real under strict PIT.**
+**Workbook validation, honestly re-scoped:** the 1,599 labels are GENERAL breakouts/gaps
+(BO log), not trendline patterns — the F-specific clause premise was wrong (logged).
+Recall QC: only 7/949 pre-lockbox labeled events fall on pilot names (tape = 2017-21
+leaders; pilot = stratified 70-yr sample) → 6/7 hit within ±5 days (encouraging, N too
+small). Proper recall needs a VALIDATION-ONLY detection pass on the tape's ~880 tickers
+(detector QC, no outcome analysis) — queued for Scott's go.
+**Remaining before an F-centered full-universe proposal:** (1) full-tape recall QC run;
+(2) human grading: ~20 random detected F events rendered as charts for Scott's eye;
+(3) then Gate 0→A1 re-review with the complete stack (rewind YES; P-C on A; F survivor).
+**Scott sign-off:** rescope direction given in-session ("lets go down the trendline path").
+
+
 ## 2026-07-25 — B-ANCHOR-3 COMPLETE HARNESS: CELL P-C on Family A; Family F is the sole survivor
 **Event type:** Pre-committed gate result (spec 36a13da; runners 5c1f01a→3745c1a; evidence
 b_anchor3_results.json). First run fired P-D on an incomplete harness (missing cyclic-roll

@@ -1,0 +1,41 @@
+{
+  "primary": {
+    "n": 6736,
+    "pos": 3429,
+    "auc": 0.6336036372940737,
+    "shuffle": [
+      0.47503431641697386,
+      0.5165680705190989
+    ],
+    "cyclic_roll": [
+      0.5225069969938841,
+      0.5710905515490258
+    ],
+    "shifted": 0.5544503907828469,
+    "deleak_clean": true,
+    "clears_null": true,
+    "win_rate": 0.5090558194774347
+  },
+  "hardened": {
+    "n": 6714,
+    "pos": 3440,
+    "auc": 0.6356585919157307,
+    "shuffle": [
+      0.4746682500448778,
+      0.5240690631124585
+    ],
+    "cyclic_roll": [
+      0.5259175644196394,
+      0.5745610801483292
+    ],
+    "shifted": 0.5567708871115065,
+    "deleak_clean": true,
+    "clears_null": true,
+    "win_rate": 0.5123622281799225
+  },
+  "workbook_recall": {
+    "n_workbook_prelockbox": 949,
+    "n_on_pilot": 7,
+    "recall_any_family_pm5cal": 0.8571428571428571
+  }
+}
