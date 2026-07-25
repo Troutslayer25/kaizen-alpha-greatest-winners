@@ -184,3 +184,21 @@ full-universe compute regardless of outcome until the Gate 0→A1 re-review clea
 
 **Scott's signature (spec freeze):** ____________  Date: ________
 *Any post-signature change is a dated addendum; results never alter this spec.*
+
+---
+
+## ADDENDUM 2026-07-25 — Family F v2 (the single allowed refinement pass; human-gate driven)
+
+Scott graded the first 5 of the v1 grading sheet: #2 invalid ("needs three touches"),
+#1/#4/#5 valid pattern but detector entry-bar timing disagrees with his read, #3 clean
+match. His practitioner spec, adopted verbatim as F v2 (refinement criterion = VISUAL
+pattern validity per the study's trendline authority; outcomes were not consulted):
+- A touch = the TOP OF THE WICK meeting the line: |high − line| / line ≤ **1.5%** for
+  MIDDLE touches (a little variance allowed), ≤ **0.6%** for the two END anchors (they
+  must touch); close must not finish above the line (≤ line × 1.005).
+- ≥ **3** touches total including both end anchors; the LAST touch is the line's second
+  anchor (the line ends on a touch).
+- Entry = first bar after the last touch with close > line AND close > prior bar's high
+  (a decisive break bar, matching Scott's dating), still under f_confirm=10 strict-PIT.
+v1 events remain persisted (banchor3_pilot:f_confirm=10) for the record; v2 persists as
+banchor3_pilot:f_v2. The v2 grading sheet goes back to Scott; the gate remains his eye.
