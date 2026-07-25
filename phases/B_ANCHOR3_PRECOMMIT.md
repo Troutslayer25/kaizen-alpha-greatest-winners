@@ -16,24 +16,47 @@ No breakout/anchor-event query has been run against gws or ka_history. The only 
 this spec are the Cell C rulings, the pilot catalog counts already on the record, and the
 practitioner corpus. The W2′ rewind used trough anchors only.
 
-## 1. Anchor event (the pivot) — frozen definition
-A bar **B** for ticker T is a **breakout event** iff (all on the hash-guarded cleaned
-series, pre-lockbox, ≥252 bars history, bar data-valid):
-- **Pivot clearance:** close(B) > max(high) over the base window **[B−65, B−6]** — it
-  clears a ~3-month range that stood untouched for ≥5 bars. (65 bars ≈ 13 weeks; O'Neil
-  minimum base lengths are 5–7 weeks, most sound bases are 2–4 months; 5-bar standoff
-  prevents same-week pivot churn.)
-- **Consolidation tightness:** (max(high) − min(low)) / max(high) over [B−65, B−6]
-  ≤ **35%**. (Correction depth: sound bases 10–35% per the base-analysis corpus; >35% is
-  a broken structure, not a base.)
-- **Volume expansion:** volume(B) ≥ **1.5 ×** ADV50(B−1). (M&K buyable-gap-up floor;
-  O'Neil breakout-volume convention ≥40–50% above average.)
-- **De-dup:** one event per ticker per 21 bars (first bar wins).
-- Universe: the 250 stratified pilot names (adversarial 50 excluded from all metrics, run
-  as pipeline stress only).
+## 1. Anchor events (points of strength) — FOUR frozen families
+*(Amended pre-signature 2026-07-25 at Scott's direction: the Caruso Swing Trading Guide /
+Buy Patterns catalog defines multiple mechanizable point-of-strength types, not just the
+classic base pivot. Four families are frozen below — count FIXED at four; no family added,
+dropped, or re-parameterized after signature. Caruso's context gates (FOMO zone, market
+trend) are deliberately NOT encoded as event gates — whether context separates winners
+from failures is a DISCOVERY question, so context enters as features, not filters.)*
 
-*Labeled robustness variants (one axis at a time, reported alongside, never substituted):*
-tightness 25% / 45%; volume 1.25× / 2.0×; base window 40 / 90 bars.
+Common preconditions for any event bar **B**: hash-guarded cleaned series, pre-lockbox,
+≥252 bars history, bar data-valid, volume(B) > 0. De-dup: one event per ticker per family
+per 21 bars (first wins); the same bar may qualify for multiple families (tagged, reported).
+Universe: the 250 stratified pilot names (adversarial 50 = pipeline stress only).
+
+**Family A — Base Breakout** (O'Neil-style consolidation exit; the classic pivot):
+- close(B) > max(high) over base window **[B−65, B−6]** (≈13-week range untouched ≥5 bars);
+- base depth (max high − min low)/max high over [B−65, B−6] ≤ **35%**;
+- volume(B) ≥ **1.5 ×** ADV50(B−1).
+*Robustness (one axis at a time):* depth 25%/45%; volume 1.25×/2.0×; window 40/90 bars.
+
+**Family B — Coil Exit** (Caruso Mini Coil; volatility contraction resolving up):
+- expansion bar E: range(E) ≥ **1.5 × ATR21(E−1)**, volume(E) ≥ 1.5 × ADV50(E−1),
+  close(E) in the top **40%** of E's range;
+- ≥ **2** subsequent sessions trading FULLY inside E's high–low range;
+- B = first bar with close(B) > high(E).
+*Robustness:* inside-sessions ≥3; expansion range ≥2.0×ATR.
+
+**Family C — Pullback Reclaim** (Caruso Failed-Breakout Pullback to the rising 21-EMA):
+- a Family-A event occurred within **[B−30, B−5]**;
+- post-breakout high H*; price pulled back **8–15%** from H* and traded at/below the
+  **21-EMA** while the 21-EMA was rising (21-EMA(t) > 21-EMA(t−5));
+- B = first bar after the touch with close(B) > max(high) over the prior 5 bars.
+*Robustness:* pullback 5–12%; reclaim window prior 3 bars.
+
+**Family D — Expectation Breaker** (Caruso Kicker; trapped sellers):
+- bar R: close(R) < open(R), range(R) ≥ **1.5 × ATR21(R−1)** (a large red candle);
+- B = R+1 with open(B) > **open(R)** (gap above the red candle's open).
+*Robustness:* red-candle range ≥2.0×ATR; gap above high(R).
+
+Family-native stops (Caruso: 5% flat for C; low-of-prior-bar for B; prior close for D;
+2×ATR for A) run as a LABELED robustness set; the primary label (§2) is uniform across
+families so outcomes are comparable.
 
 ## 2. Outcome label — frozen definition
 Entry = close(B). From B forward:
@@ -48,11 +71,15 @@ Entry = close(B). From B forward:
 time-to-resolution.
 
 ## 3. The contrast
-**Winners vs FAILED breakouts from the identical entry rule** — configuration-matched by
-construction (same pivot geometry requirements). Reported diagnostics: era balance,
-delisted share both arms, tightness/liquidity distributions both arms (residual matching
-applied only if a diagnostic shows gross imbalance, as a labeled robustness line, never
-silently).
+**Winners vs FAILED events from the identical entry rule, per family and pooled** —
+configuration-matched by construction. Primary gate (§6) evaluates **Family A**; Families
+B–D publish as pre-committed co-exhibits (per-family cells, same harness); the pooled
+analysis (family as a categorical feature) is a labeled secondary view. Families with
+< 200 resolved events are reported as UNDERPOWERED, not silently dropped. Per-family ×
+per-era win rate / MFE / MAE tables are a headline deliverable regardless of cells — this
+IS the "classify moves by how they begin" catalog Scott asked for. Reported diagnostics:
+era balance, delisted share both arms, tightness/liquidity distributions both arms
+(residual matching only as a labeled robustness line, never silently).
 
 ## 4. Features
 The frozen price/volume net + generic bank, measured **at B−1** (the last bar before
