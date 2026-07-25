@@ -16,11 +16,11 @@ No breakout/anchor-event query has been run against gws or ka_history. The only 
 this spec are the Cell C rulings, the pilot catalog counts already on the record, and the
 practitioner corpus. The W2′ rewind used trough anchors only.
 
-## 1. Anchor events (points of strength) — FOUR frozen families
+## 1. Anchor events (points of strength) — SIX frozen families
 *(Amended pre-signature 2026-07-25 at Scott's direction: the Caruso Swing Trading Guide /
-Buy Patterns catalog defines multiple mechanizable point-of-strength types, not just the
-classic base pivot. Four families are frozen below — count FIXED at four; no family added,
-dropped, or re-parameterized after signature. Caruso's context gates (FOMO zone, market
+Buy Patterns catalog and the IBD Level-3/5 coursework define multiple mechanizable
+point-of-strength ENTRY types, not just the classic base pivot. Six families are frozen
+below — count FIXED at six; no family added, dropped, or re-parameterized after signature. Caruso's context gates (FOMO zone, market
 trend) are deliberately NOT encoded as event gates — whether context separates winners
 from failures is a DISCOVERY question, so context enters as features, not filters.)*
 
@@ -35,7 +35,7 @@ Universe: the 250 stratified pilot names (adversarial 50 = pipeline stress only)
 - volume(B) ≥ **1.5 ×** ADV50(B−1).
 *Robustness (one axis at a time):* depth 25%/45%; volume 1.25×/2.0×; window 40/90 bars.
 
-**Family B — Tight-Range Breakout** (Caruso Mini Coil lineage; a tight area RESOLVING UPWARD is the entry — all five families are ENTRY events, nothing here is a sell):
+**Family B — Tight-Range Breakout** (Caruso Mini Coil lineage; a tight area RESOLVING UPWARD is the entry — all six families are ENTRY events, nothing here is a sell):
 - expansion bar E: range(E) ≥ **1.5 × ATR21(E−1)**, volume(E) ≥ 1.5 × ADV50(E−1),
   close(E) in the top **40%** of E's range;
 - ≥ **2** subsequent sessions trading FULLY inside E's high–low range;
@@ -64,6 +64,21 @@ Scott's direction from the IBD Level-3/5 coursework):
   [B−15, B] (IBD: breakaway gaps happen at or just past the pivot).
 *Robustness:* gap ≥ 1.0×ATR40; volume ≥ 2.0×; proximity window 5 bars.
 
+**Family F — Trendline Break** (Caruso 3-Touch Trendline; added 2026-07-25 at Scott's
+direction; deterministic construction so no chart judgment enters):
+- anchor high = max(high) over **[B−90, B−10]** at bar a₀;
+- the line: through (a₀, high(a₀)) and the highest subsequent swing high a₁ with
+  high(a₁) < high(a₀) and a₁ ≥ a₀+5 (declining by construction);
+- **touches:** ≥ **3** distinct bars (≥3 bars apart, a₀ and a₁ count) whose high comes
+  within **2%** of the line's value that bar without closing above it;
+- B = first bar with close(B) above the line by ≥ **1%**, with close(B) > close(B−1).
+- Validation clause: before full-era use, the rule is scored against Scott's hand-labeled
+  2015–26 trendline-breakout workbook (~1,599 events) and the agreement rate published;
+  the rule is NOT tuned to the workbook post hoc — one pre-committed refinement pass is
+  allowed as a dated addendum if agreement < 60%.
+*Robustness:* touches ≥2 / ≥4; touch tolerance 1% / 3%; anchor window 60 / 120 bars.
+*(Family-native stop: low of the session before the break — Caruso.)*
+
 **Base-shape TAGS on Family A** (IBD base taxonomy; classification of the [B−65, B−6]
 window by frozen weekly geometry — tags, not separate events; UNTYPED allowed):
 `flat` (depth ≤15%, ≥25 bars), `cup` (depth 15–33%, ≥35 bars, rounded low: min in the
@@ -87,7 +102,7 @@ order listed wins; per-tag outcome tables publish with the family tables.
   window by ≤10% then recovers to **+10% above the undercut low** within 15 bars — IBD
   Shakeout+3 generalized to percent terms; entry at that recovery close).
 
-Family count is FIXED at five; tag sets are FIXED as listed. Family-native stops
+Family count is FIXED at six; tag sets are FIXED as listed. Family-native stops
 (Caruso: 5% flat for C; low-of-prior-bar for B; prior close for D; gap-day intraday low
 for E [M&K sell-guide]; 2×ATR for A) run as a LABELED robustness set; the primary label
 (§2) is uniform across families so outcomes are comparable.
