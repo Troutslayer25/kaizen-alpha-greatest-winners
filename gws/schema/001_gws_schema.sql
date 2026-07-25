@@ -45,6 +45,44 @@ CREATE INDEX IF NOT EXISTS ix_entity_ticker_map_ticker ON gws.entity_ticker_map 
 -- Watchlist symbols the ingester could NOT resolve to a ka_history entity — persisted,
 -- never printed-and-forgotten (review 2026-07-03 CF-1). A non-trivial count here HALTs
 -- the ingest: a silently short universe is the failure mode we are guarding against.
+-- B-anchor-3 anchor-event catalog (pre-commit 36a13da). PERMANENT, queryable record of
+-- every point-of-strength entry event: family/tag geometry, entry/stop, outcome under the
+-- uniform label, and forward path stats. ticker_id = Norgate entity_id (single-domain rule).
+CREATE TABLE IF NOT EXISTS gws.anchor_events (
+  event_id      BIGSERIAL PRIMARY KEY,
+  run_id        TEXT    NOT NULL,
+  ticker_id     BIGINT  NOT NULL,
+  event_date    DATE    NOT NULL,            -- bar B
+  family        TEXT    NOT NULL,            -- 'A'..'F'
+  variant_tag   TEXT,                         -- base shape / family variant, NULL = untyped
+  entry_price   NUMERIC NOT NULL,            -- close(B), adjusted
+  stop_price    NUMERIC,                      -- uniform 2xATR21 stop level
+  native_stop   NUMERIC,                      -- family-native stop level (robustness set)
+  outcome       TEXT    NOT NULL,            -- 'winner' | 'failed' | 'unresolved'
+  outcome_date  DATE,                         -- resolution bar date
+  fwd_mfe       NUMERIC,                      -- max favorable excursion within H (frac)
+  fwd_mae       NUMERIC,                      -- max adverse excursion within H (frac)
+  bars_to_resolution INTEGER,
+  UNIQUE (run_id, ticker_id, event_date, family)
+);
+CREATE INDEX IF NOT EXISTS ix_anchor_events_family ON gws.anchor_events (family, outcome);
+CREATE INDEX IF NOT EXISTS ix_anchor_events_date ON gws.anchor_events (event_date);
+
+-- Daily market-context series (B-anchor-3 §4b), reusable by any future study: deep
+-- survivorship-free breadth (the Caruso FOMO construction over the study universe) +
+-- $SPX posture. Built once per data vintage by build_market_context.
+CREATE TABLE IF NOT EXISTS gws.market_context (
+  date                  DATE PRIMARY KEY,
+  breadth_pct_above_5d  NUMERIC,
+  breadth_pct_above_200d NUMERIC,
+  n_universe            INTEGER,             -- eligible names underlying the breadth calc
+  spx_close             NUMERIC,
+  spx_vs_50d            NUMERIC,
+  spx_vs_200d           NUMERIC,
+  spx_dist_52w_high     NUMERIC,
+  spx_ret_std_21        NUMERIC
+);
+
 -- Per-ticker cleaned-series fingerprint (Gate 0→A1 review, integration M3). Detection
 -- writes it; every later stage that rebuilds as_of_index<->date by re-running the loader
 -- MUST assert equality and refuse to compose on mismatch — date-vector drift otherwise
