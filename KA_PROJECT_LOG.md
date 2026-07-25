@@ -15,6 +15,35 @@ Entry format:
 
 ---
 
+## 2026-07-25 — B-ANCHOR-3 COMPLETE HARNESS: CELL P-C on Family A; Family F is the sole survivor
+**Event type:** Pre-committed gate result (spec 36a13da; runners 5c1f01a→3745c1a; evidence
+b_anchor3_results.json). First run fired P-D on an incomplete harness (missing cyclic-roll
+null + robustness labels — implementation agent's spec misses, logged); completed per the
+P-D fix path and re-run.
+**Catalog (permanent, gws.anchor_events):** 29,970 events, 6 families, 21 param variants.
+Honest base rates: ~30% winners (+20% before 2×ATR, H=126) for A/B/C/E, 34% D, **50.7% F**;
+1990s best era (40.6%).
+**Gate results (all six de-leak CLEAN once the run-preserving null adjudicated the mild
+shift flags):**
+- **Family A (base breakout, THE gate): P-C.** AUC 0.581 sits INSIDE the run-preserving
+  null band (hi 0.585) — separation is fully reproducible from per-name win rates + label
+  clumping. The ATR-coupling diagnostic confirms: volatility-excluded AUC 0.557; **fixed-7%
+  -stop label collapses it to 0.514**. Label robustness 0/4, param variants 3/6. At pilot
+  scale on this net, O'Neil-pivot outcomes are NOT predictable at entry beyond name-level
+  base rates.
+- **Family F (trendline break): the ONLY family that clears its null with margin** — AUC
+  0.634 vs null-hi 0.570 (+0.05 bar met), de-leak clean, era-stable (0.55/0.63/0.66/0.66),
+  and the highest raw win rate (50.7%) and median MFE (+17.5%). CAVEATS STANDING: workbook
+  validation clause (Scott's 1,599 hand labels) unexecuted; the swing-high construction
+  uses ±10-bar confirmation (mild pattern-formation lookahead to audit before trust).
+- B (0.610 vs null-hi 0.603) and D (0.603 vs 0.600) sit AT their null edges — suggestive
+  only. E (gap-up): nothing (0.509).
+**Per the signed matrix, P-C → recommend stop or radical rescope — Scott rules.** The
+evidence-backed rescope candidate: re-center the tradeability thesis on Family F +
+the W2′ rewind characteristics (rs-depressed/ordered-path cohort tilt), validate F against
+the workbook, audit F's construction, and only then consider full-universe.
+**Scott sign-off:** PENDING — P-C cell + rescope direction are his calls.
+
 ## 2026-07-24 (night) — W1 FAIL / W2′ REWIND FIRES YES: a modest pre-move signature is real at T-21/T-63
 **Event type:** Pre-committed results (amended package, spec 65e5582, runner 30f80d2)
 **Scott's intent correction logged first:** trough-prediction was never the study's
