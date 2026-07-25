@@ -17,9 +17,9 @@ sys.path.insert(0, r"C:\Users\scott\kaizen-alpha")
 from gws.phase_a1.detect_anchor_events import P, load_series          # noqa: E402
 
 SEED = 20260719
-RUN = "banchor3_pilot:f_confirm=10"
+RUN = "banchor3_pilot:f_v2"
 OUT = pathlib.Path(r"C:\Users\scott\Desktop\Kaizen-Alpha Reports\studies") / \
-    "gws_f_grading_sheet_2026-07-25.html"
+    "gws_f_grading_sheet_v2_2026-07-25.html"
 
 
 def f_geometry(d, h, lo, c, B_target, p):
@@ -35,7 +35,12 @@ def f_geometry(d, h, lo, c, B_target, p):
             end = min(a0 + FW + 1, n)
             line = h[a0] + slope * (np.arange(a0, end) - a0)
             seg_h, seg_c = h[a0:end], c[a0:end]
-            near = (seg_h >= line * (1 - FT)) & (seg_c <= line)
+            v2 = p.get("f_v2", False)
+            if v2:
+                near = ((np.abs(seg_h - line) <= line * p.get("f_mid_tol", 0.015))
+                        & (seg_c <= line * 1.005))
+            else:
+                near = (seg_h >= line * (1 - FT)) & (seg_c <= line)
             tidx = np.where(near)[0]
             picked, last = [], -9
             for tt in tidx:
@@ -44,13 +49,18 @@ def f_geometry(d, h, lo, c, B_target, p):
                     last = tt
             if len(picked) < p["f_touch"]:
                 continue
+            if v2:
+                lt = picked[-1]
+                if (abs(seg_h[lt] - line[lt]) > line[lt] * p.get("f_end_tol", 0.006)
+                        or picked[0] != 0 or a0 + lt < a1):
+                    continue
             after = picked[-1] + 1
-            brk = np.where(seg_c[after:] > line[after:] * 1.01)[0]
+            brk = np.where(seg_c[after:] > line[after:] * (1.0 if v2 else 1.01))[0]
             for bb in brk:
                 B = a0 + after + bb
                 if B < a1 + p.get("f_confirm", 0):
                     continue
-                if c[B] > c[B - 1]:
+                if (c[B] > h[B - 1]) if v2 else (c[B] > c[B - 1]):
                     if B == B_target:
                         return a0, a1, [a0 + t for t in picked], slope
                     break
@@ -77,7 +87,7 @@ def main() -> int:
                 .apply(lambda g: g.sample(min(5, len(g)), random_state=SEED))
                 .reset_index(drop=True))
 
-    p = {**P, "f_confirm": 10}
+    p = {**P, "f_confirm": 10, "f_v2": True}
     figs = []
     for k, r in enumerate(sample.itertuples(), 1):
         s = load_series(conn, int(r.ticker_id))
