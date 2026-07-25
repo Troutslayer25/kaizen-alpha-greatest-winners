@@ -1,6 +1,6 @@
 # B-anchor-3 — Point-of-Strength Experiment: Pre-Committed Specification (DRAFT for Scott)
 
-**Status:** DRAFT — awaiting Scott's signature. NOTHING below runs until signed.
+**Status:** SIGNED — Scott, in-session 2026-07-25 ("agreed, run it"); typed signature on next repo touch. Spec FROZEN as of this commit.
 **Position:** the study's load-bearing tradeability gate (Cell C review + Scott's
 2026-07-24 intent correction). The rewind (W2′) established that moves telegraph a modest
 signature while being born; THIS experiment decides whether anything separates winners
