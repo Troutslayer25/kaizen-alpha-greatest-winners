@@ -35,7 +35,7 @@ Universe: the 250 stratified pilot names (adversarial 50 = pipeline stress only)
 - volume(B) ≥ **1.5 ×** ADV50(B−1).
 *Robustness (one axis at a time):* depth 25%/45%; volume 1.25×/2.0×; window 40/90 bars.
 
-**Family B — Coil Exit** (Caruso Mini Coil; volatility contraction resolving up):
+**Family B — Tight-Range Breakout** (Caruso Mini Coil lineage; a tight area RESOLVING UPWARD is the entry — all five families are ENTRY events, nothing here is a sell):
 - expansion bar E: range(E) ≥ **1.5 × ATR21(E−1)**, volume(E) ≥ 1.5 × ADV50(E−1),
   close(E) in the top **40%** of E's range;
 - ≥ **2** subsequent sessions trading FULLY inside E's high–low range;
