@@ -54,9 +54,43 @@ Universe: the 250 stratified pilot names (adversarial 50 = pipeline stress only)
 - B = R+1 with open(B) > **open(R)** (gap above the red candle's open).
 *Robustness:* red-candle range ≥2.0×ATR; gap above high(R).
 
-Family-native stops (Caruso: 5% flat for C; low-of-prior-bar for B; prior close for D;
-2×ATR for A) run as a LABELED robustness set; the primary label (§2) is uniform across
-families so outcomes are comparable.
+**Family E — Gap-Up** (IBD Breakaway Gap / M&K Buyable Gap-Up; added 2026-07-25 per
+Scott's direction from the IBD Level-3/5 coursework):
+- open(B) > high(B−1) with gap size (open(B) − high(B−1)) ≥ **0.75 × ATR40(B−1)** (the
+  M&K buyable-gap-up floor);
+- volume(B) ≥ **1.5 ×** ADV50(B−1);
+- close(B) ≥ open(B) (the gap holds);
+- proximity-to-strength: high(B) is a **126-bar high**, OR a Family-A event fired in
+  [B−15, B] (IBD: breakaway gaps happen at or just past the pivot).
+*Robustness:* gap ≥ 1.0×ATR40; volume ≥ 2.0×; proximity window 5 bars.
+
+**Base-shape TAGS on Family A** (IBD base taxonomy; classification of the [B−65, B−6]
+window by frozen weekly geometry — tags, not separate events; UNTYPED allowed):
+`flat` (depth ≤15%, ≥25 bars), `cup` (depth 15–33%, ≥35 bars, rounded low: min in the
+middle three-fifths of the window), `cup_handle` (cup + final 5–15 bars drifting down in
+the upper half of the base range, pivot = handle high), `double_bottom` (two lows ≥15
+bars apart, second low undercuts the first, midpoint rally between), `high_tight_flag`
+(pre-base flagpole ≥ +90% over the 40 bars before the base AND base depth ≤25% within
+15–25 bars), `saucer` (cup geometry, depth ≤20%, ≥50 bars). First matching tag in the
+order listed wins; per-tag outcome tables publish with the family tables.
+
+**Variant TAGS within families** (IBD Level-5 alternative buy points; same discipline):
+- Family B variants: `mini_coil` (as spec'd), `doji_flag` (expansion bar then 1–2
+  small-range bars [range ≤ 0.5×ATR21] holding the upper half, break above),
+  `three_weeks_tight` (WEEKLY: 3 consecutive Friday closes within **1.5%** of each
+  other, entry = daily close above the tight-range high; `short_stroke` = big up week
+  [close in top 20% of a ≥1.5×weekly-ATR range] then one tight inside week, entry above
+  the two-week high).
+- Family C variants: `fbo_21ema` (as spec'd), `tenweek_first_touch` (FIRST touch of the
+  rising 50-day MA within 60 bars after a Family-A event; entry = first close back above
+  the prior 5-bar high), `shakeout_reclaim` (price undercuts the base low of a Family-A
+  window by ≤10% then recovers to **+10% above the undercut low** within 15 bars — IBD
+  Shakeout+3 generalized to percent terms; entry at that recovery close).
+
+Family count is FIXED at five; tag sets are FIXED as listed. Family-native stops
+(Caruso: 5% flat for C; low-of-prior-bar for B; prior close for D; gap-day intraday low
+for E [M&K sell-guide]; 2×ATR for A) run as a LABELED robustness set; the primary label
+(§2) is uniform across families so outcomes are comparable.
 
 ## 2. Outcome label — frozen definition
 Entry = close(B). From B forward:
@@ -86,6 +120,25 @@ The frozen price/volume net + generic bank, measured **at B−1** (the last bar 
 entry — nothing from B itself or later). Labeled secondary views at B−5 and B−21
 (pre-pivot posture). Location family included here — at a pivot, distance-from-high is
 genuine setup posture, not label echo; the de-leak control (below) adjudicates.
+
+## 4b. Context block (frozen; added 2026-07-25 per Scott — context as INDICATOR, never
+as event gate)
+Eight market/context features, all PIT at B−1, appended to the net for this experiment
+only (a dated feature-net addendum, not an expansion of the discovery net):
+1. `ctx_spx_vs_200d` — $SPX close / its 200-bar SMA − 1;
+2. `ctx_spx_vs_50d` — same, 50-bar;
+3. `ctx_spx_dist_52w_high` — $SPX close / trailing 252-bar max − 1;
+4. `ctx_spx_ret_std_21` — $SPX 21-bar realized volatility;
+5. `ctx_breadth_pct_above_5d` — % of the study universe's eligible stocks closing above
+   their own 5-bar SMA (the Caruso FOMO construction, computed survivorship-free from
+   ka_history — deep-history breadth no vendor provides);
+6. `ctx_breadth_pct_above_200d` — same, 200-bar (long breadth);
+7. `ctx_downside_capture_63` — the stock's return over $SPX's worst 21-bar stretch
+   within [B−63, B−1] divided by $SPX's return over that stretch (the MRVL-vs-CTSH
+   "falls less = being accumulated" leadership signal);
+8. `ctx_era` — the four era bins (categorical; also the split axis for per-era tables).
+Caruso's zone claims (breakouts after fear work; breakouts into >80 FOMO fail) become
+testable READINGS of feature 5 × family interactions — published either way.
 
 ## 5. Harness (all pre-committed)
 - Shuffle-null band (25 reps) — chance reference.
