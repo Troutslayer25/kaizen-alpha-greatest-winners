@@ -17,9 +17,9 @@ sys.path.insert(0, r"C:\Users\scott\kaizen-alpha")
 from gws.phase_a1.detect_anchor_events import P, load_series          # noqa: E402
 
 SEED = 20260719
-RUN = "banchor3_pilot:f_v2"
+RUN = "banchor3_pilot:f_v3"
 OUT = pathlib.Path(r"C:\Users\scott\Desktop\Kaizen-Alpha Reports\studies") / \
-    "gws_f_grading_sheet_v2_2026-07-25.html"
+    "gws_f_grading_sheet_v3_2026-07-25.html"
 
 
 def f_geometry(d, h, lo, c, B_target, p):
@@ -87,7 +87,7 @@ def main() -> int:
                 .apply(lambda g: g.sample(min(5, len(g)), random_state=SEED))
                 .reset_index(drop=True))
 
-    p = {**P, "f_confirm": 10, "f_v2": True}
+    p = {**P, "f_confirm": 10, "f_v3": True}
     figs = []
     for k, r in enumerate(sample.itertuples(), 1):
         s = load_series(conn, int(r.ticker_id))
@@ -98,17 +98,17 @@ def main() -> int:
         B = didx.get(r.event_date)
         if B is None:
             continue
-        geo = f_geometry(d, h, lo, c, B, p)
+        from gws.phase_a1.detect_anchor_events import detect_f_v3
+        geo = next(((p0, q1, tch, la) for (bb, (p0, q1, tch, la))
+                    in detect_f_v3(h, lo, c, p) if bb == B), None)
         w0, w1 = max(0, (geo[0] if geo else B - 90) - 10), min(len(c), B + 40)
         x = [str(dd) for dd in d[w0:w1]]
         fig = go.Figure(go.Candlestick(x=x, open=o[w0:w1], high=h[w0:w1],
                                        low=lo[w0:w1], close=c[w0:w1],
                                        showlegend=False))
         if geo:
-            a0, a1, touches, slope = geo
-            xs = [str(d[a0]), str(d[B])]
-            ys = [h[a0], h[a0] + slope * (B - a0)]
-            fig.add_scatter(x=xs, y=ys, mode="lines",
+            p0, q1, touches, la = geo
+            fig.add_scatter(x=[str(d[p0]), str(d[B])], y=[la(p0), la(B)], mode="lines",
                             line=dict(color="orange", width=2), showlegend=False)
             fig.add_scatter(x=[str(d[t]) for t in touches],
                             y=[h[t] for t in touches], mode="markers",

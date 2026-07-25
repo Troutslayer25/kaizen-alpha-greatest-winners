@@ -78,6 +78,53 @@ def atr(h, lo, c, p):
     return pd.Series(tr).ewm(alpha=1 / p, adjust=False).mean().to_numpy()
 
 
+def detect_f_v3(h, lo, c, p):
+    """F v3 (addendum 2026-07-25(2)): declining upper-convex-hull edges = trendlines with
+    NOTHING above by construction; ≥3 wick touches (±mid_tol) incl. both endpoints; min
+    span; entry = first close above the projected line, ≥f_confirm bars past the right
+    anchor. Returns [(B, geometry)] where geometry = (p0, q1, touches, line_at)."""
+    n = len(c)
+    mid_tol = p.get("f_mid_tol", 0.015)
+    span_min = p.get("f_span_min", 20)
+    confirm = p.get("f_confirm", 10)
+    FW = p["f_win"]
+    out = []
+    swings = [i for i in range(10, n - 5) if h[i] == h[max(0, i - 10):i + 11].max()]
+    for a0 in swings:
+        end = min(a0 + FW + 1, n)
+        pts = list(range(a0, end))
+        hull = []                                  # upper hull via monotone chain
+        for i in pts:
+            while len(hull) >= 2 and \
+                    (h[hull[-1]] - h[hull[-2]]) * (i - hull[-1]) >= \
+                    (h[i] - h[hull[-1]]) * (hull[-1] - hull[-2]):
+                hull.pop()
+            hull.append(i)
+        for e in range(len(hull) - 1):
+            p0, q1 = hull[e], hull[e + 1]
+            if p0 != a0 or h[q1] >= h[p0] or q1 - p0 < span_min:
+                continue
+            slope = (h[q1] - h[p0]) / (q1 - p0)
+
+            def line_at(i, p0=p0, slope=slope):
+                return h[p0] + slope * (i - p0)
+
+            touches, last = [], -9
+            for i in range(p0, q1 + 1):
+                li = line_at(i)
+                if abs(h[i] - li) <= li * mid_tol and i - last >= 3:
+                    touches.append(i)
+                    last = i
+            if len(touches) < p["f_touch"] or touches[0] != p0 or touches[-1] != q1:
+                continue
+            for t in range(max(q1 + 1, q1 + confirm), min(q1 + 61, n)):
+                if c[t] > line_at(t):
+                    out.append((t, (p0, q1, touches, line_at)))
+                    break
+            break                                   # first qualifying edge per a0
+    return out
+
+
 def detect_all(d, o, h, lo, c, v, p, fams=frozenset("ABCDEF")):
     n = len(c)
     a21 = atr(h, lo, c, 21); a40 = atr(h, lo, c, 40)
@@ -213,6 +260,11 @@ def detect_all(d, o, h, lo, c, v, p, fams=frozenset("ABCDEF")):
                 and c[B] >= o[B]:
             if h[B] >= h126[B] or any((B - k) in a_set for k in range(p["e_prox"] + 1)):
                 ev.append((B, "E", None, lo[B]))
+
+    if "F" in fams and p.get("f_v3", False):     # hull rule (addendum 2026-07-25(2))
+        for B, (_p0, _q1, _touches, _la) in detect_f_v3(h, lo, c, p):
+            ev.append((B, "F", "v3", lo[B - 1]))
+        return ev if fams == frozenset("F") else ev  # v3 replaces the v1/v2 F block below
 
     FW, FT = p["f_win"], p["f_tol"]              # Family F
     v2 = p.get("f_v2", False)                    # Scott's spec, addendum 2026-07-25
