@@ -202,3 +202,30 @@ pattern validity per the study's trendline authority; outcomes were not consulte
   (a decisive break bar, matching Scott's dating), still under f_confirm=10 strict-PIT.
 v1 events remain persisted (banchor3_pilot:f_confirm=10) for the record; v2 persists as
 banchor3_pilot:f_v2. The v2 grading sheet goes back to Scott; the gate remains his eye.
+
+---
+
+## ADDENDUM 2026-07-25 (2) — F v3: the grading loop is SPEC ELICITATION, hull-based rule
+
+Scott graded all 20 v2 charts: valid = #3 (exact match), #4, #5, #8, #20 (break 2 days
+earlier; arrow arguable), #9 (break 3/19/2002; arrow arguable second entry), #7 (partial —
+different bar), #11 = C grade; INVALID = 1,2,6,10,12–19, dominant reason verbatim: "bars /
+too much activity ABOVE the trend line." Rule extracted: a valid trendline is an UPPER
+ENVELOPE — between its end anchors NOTHING trades above the line (wick-top touches only);
+#6's note ("anchor should be 7-26") confirms anchors slide until the line clears all highs.
+Timing notes (#7/#9/#20) trace to v2's decisive-bar condition delaying entries — dropped.
+
+**v3 (hull rule):** candidate lines = declining edges of the UPPER CONVEX HULL of highs
+from a major swing high (nothing above the line by construction); ≥3 wick touches within
+±1.5% including both edge endpoints (exact by construction); minimum edge span 20 bars;
+entry = first close above the projected line, ≥10 bars after the right anchor (strict-PIT
+confirm), within 60 bars.
+
+**Governance note (honest):** this is the SECOND refinement, beyond the addendum's single
+allowed pass. Ruling taken: the grading loop is pattern-DEFINITION elicitation from the
+study's domain authority (Scott: "do some more of this so that you can learn what I
+consider valid"), conducted OUTCOME-BLIND (grades reference chart geometry only; the v2
+win-rate print was not consulted in the rule change — noted for the auditors to verify
+from the transcript). The loop continues until Scott grades a fresh 20-chart sheet at
+≥80% valid; ONLY THEN does any analytical gate re-run on the final rule, once, with all
+prior versions preserved (f_confirm=10, f_v2 runs remain in gws.anchor_events).
